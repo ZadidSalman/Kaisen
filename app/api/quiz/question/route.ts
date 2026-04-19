@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Get the correct theme
     const [correctTheme] = await ThemeCache.aggregate([
-      { $match: { audioUrl: { $ne: null } } }, // Ensure we have audio at least
+      { $match: { audioUrl: { $ne: null }, isPopular: true } }, // Ensure we have audio at least, and it's popular
       { $sample: { size: 1 } },
     ])
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Get 3 distractors
     // We want distractors that are different from the correct one based on the quiz type
-    let filter: any = { _id: { $ne: correctTheme._id } }
+    let filter: any = { _id: { $ne: correctTheme._id }, isPopular: true }
     
     const distractors = await ThemeCache.aggregate([
       { $match: filter },

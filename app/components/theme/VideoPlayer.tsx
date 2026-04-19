@@ -6,6 +6,7 @@ import 'plyr-react/plyr.css'
 import { authFetch } from '@/lib/auth-client'
 import { Play, Pause } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
 
 interface VideoPlayerProps {
   videoSources: { resolution: number; url: string }[]
@@ -19,6 +20,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, atEntryId, onWatched, autoPlay }: VideoPlayerProps) {
+  const { user } = useAuth()
   const hasLoggedView = useRef(false)
   const plyrRef = useRef<any>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -43,7 +45,7 @@ export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, a
   }, [])
 
   const logView = useCallback(async () => {
-    if (hasLoggedView.current) return
+    if (hasLoggedView.current || !user) return
     hasLoggedView.current = true
     
     try {
@@ -67,7 +69,7 @@ export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, a
       console.error(`[VideoPlayer] Failed to log history:`, err)
       hasLoggedView.current = false
     }
-  }, [themeSlug, atEntryId, mode, onWatched])
+  }, [themeSlug, atEntryId, mode, onWatched, user])
 
   const handlePlay = useCallback(() => {
     setIsPlaying(true)

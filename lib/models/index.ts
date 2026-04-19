@@ -85,6 +85,9 @@ export interface IThemeCache extends Document {
   totalListens: number
   duration: number
   syncedAt: Date
+  isPopular?: boolean
+  popularRank?: number
+  featuredAt?: Date
 }
 
 const VideoSourceSchema = new Schema<IVideoSource>({
@@ -140,6 +143,9 @@ const ThemeCacheSchema = new Schema<IThemeCache>({
   totalListens:           { type: Number, default: 0 },
   duration:               { type: Number, default: 90 },
   syncedAt:               { type: Date, required: true },
+  isPopular:              { type: Boolean, default: false },
+  popularRank:            { type: Number, default: null },
+  featuredAt:             { type: Date, default: null },
 }, { timestamps: true })
 
 ThemeCacheSchema.index({
@@ -168,6 +174,7 @@ ThemeCacheSchema.index({ artistSlugs: 1 })
 ThemeCacheSchema.index({ type: 1 })
 ThemeCacheSchema.index({ anilistId: 1 })
 ThemeCacheSchema.index({ mood: 1 })
+ThemeCacheSchema.index({ isPopular: -1, popularRank: 1 })
 
 export const ThemeCache = mongoose.models.ThemeCache || mongoose.model<IThemeCache>('ThemeCache', ThemeCacheSchema)
 

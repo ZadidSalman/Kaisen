@@ -12,15 +12,13 @@ export async function GET(req: NextRequest) {
     const limit = 20
     const skip = (page - 1) * limit
 
-    const filter: any = {}
+    const filter: any = { isPopular: true }
     if (type) {
       filter.type = type.toUpperCase()
     }
 
-    // In a real app we might filter by totalRatings >= 3
-    // But for MVP/Initial seed, we show all
     const themes = await ThemeCache.find(filter)
-      .sort({ avgRating: -1, totalRatings: -1, totalWatches: -1 })
+      .sort({ popularRank: 1 })
       .skip(skip)
       .limit(limit)
       .lean()

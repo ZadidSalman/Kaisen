@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const season = searchParams.get('season')
     const year   = searchParams.get('year')
 
-    const filter: any = {}
+    const filter: any = { isPopular: true }
     if (type)   filter.type = type.toUpperCase()
     if (season) filter.animeSeason = season.toUpperCase()
     if (year)   filter.animeSeasonYear = parseInt(year)

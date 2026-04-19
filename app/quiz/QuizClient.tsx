@@ -27,6 +27,7 @@ export function QuizClient() {
   const [correctCount, setCorrectCount] = useState(0)
   const [maxStreak, setMaxStreak] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
+  const [mediaReady, setMediaReady] = useState(false)
   const [leaderboard, setLeaderboard] = useState<any[]>([])
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -42,6 +43,7 @@ export function QuizClient() {
     setSelectedOption(null)
     setIsCorrect(null)
     setShowPlayer(false)
+    setMediaReady(false)
     try {
       const res = await fetch(`/api/quiz/question?type=${type}`)
       const json = await res.json()
@@ -133,7 +135,7 @@ export function QuizClient() {
   }, [gameState])
 
   useEffect(() => {
-    if (gameState === 'playing' && timer > 0 && !selectedOption) {
+    if (gameState === 'playing' && timer > 0 && !selectedOption && mediaReady) {
       timerRef.current = setInterval(() => {
         setTimer(prev => prev - 1)
       }, 1000)
@@ -141,14 +143,14 @@ export function QuizClient() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
 
-    if (timer === 0 && !selectedOption) {
+    if (timer === 0 && !selectedOption && mediaReady) {
       handleOptionSelect('') // Timeout
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [gameState, timer, selectedOption, handleOptionSelect])
+  }, [gameState, timer, selectedOption, handleOptionSelect, mediaReady])
 
   if (gameState === 'lobby') {
     return (
@@ -310,7 +312,9 @@ export function QuizClient() {
          <div className="flex items-center gap-4">
             <div className="bg-bg-surface px-4 py-2 rounded-full border border-border-subtle shadow-sm flex items-center gap-2">
               <Timer className={`w-4 h-4 ${timer <= 5 ? 'text-red-500 animate-pulse' : 'text-accent'}`} />
-              <span className={`font-mono font-bold ${timer <= 5 ? 'text-red-500' : 'text-ktext-primary'}`}>{timer}s</span>
+              <span className={`font-mono font-bold ${timer <= 5 ? 'text-red-500' : 'text-ktext-primary'}`}>
+                {mediaReady ? `${timer}s` : 'Buffering...'}
+              </span>
             </div>
             <div className="bg-bg-surface px-4 py-2 rounded-full border border-border-subtle shadow-sm flex items-center gap-2">
               <Zap className="w-4 h-4 text-yellow-500" />
@@ -343,6 +347,7 @@ export function QuizClient() {
                   <video 
                     ref={videoRef}
                     autoPlay
+                    onPlaying={() => setMediaReady(true)}
                     src={currentQuestion?.questionTheme.videoUrl}
                     className={`w-full h-full object-cover transition-all duration-700
                       ${(quizType === 'anime' && !selectedOption) ? 'blur-2xl opacity-50' : 'opacity-100'}`}
