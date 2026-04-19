@@ -1,0 +1,39 @@
+export const queryKeys = {
+  themes: {
+    popular:         (type?: string) => ['themes', 'popular', type],
+    seasonal:        (season: string, year: number, type?: string) => ['themes', 'seasonal', season, year, type],
+    bySlug:          (slug: string) => ['themes', slug],
+    versions:        (slug: string) => ['themes', 'versions', slug],
+    byArtist:        (slug: string) => ['themes', 'artist', slug],
+    forYou:          (userId: string) => ['themes', 'for-you', userId],
+    recommendations: (slug: string) => ['themes', 'recommendations', slug],
+    random:          () => ['themes', 'random'],
+  },
+  search:    { results: (q: string, type?: string) => ['search', q, type] },
+  anime:     { byId: (id: number) => ['anime', id] },
+  artist:    { bySlug: (slug: string) => ['artist', slug] },
+  ratings:   { mine: (themeSlug: string) => ['ratings', 'mine', themeSlug] },
+  favorites: { list: () => ['favorites'] },
+  friends: {
+    list:         (userId: string) => ['friends', userId],
+    requests:     (userId: string) => ['friends', 'requests', userId],
+    requestsSent: (userId: string) => ['friends', 'requests', 'sent', userId],
+    status:       (username: string) => ['friends', 'status', username],
+    activity:     (userId: string) => ['friends', 'activity', userId],
+  },
+  follow: {
+    status:    (username: string) => ['follow', 'status', username],
+    followers: (username: string) => ['follow', 'followers', username],
+    following: (username: string) => ['follow', 'following', username],
+  },
+  notifications: {
+    list:        (userId: string) => ['notifications', userId],
+    unreadCount: (userId: string) => ['notifications', 'count', userId],
+  },
+  quiz: {
+    question:    (type: string) => ['quiz', 'question', type],
+    leaderboard: () => ['quiz', 'leaderboard'],
+  },
+  profile: { byUsername: (username: string) => ['profile', username] },
+  stats:   { live: () => ['stats', 'live'] },
+}
