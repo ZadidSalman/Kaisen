@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       },
       body: JSON.stringify({
         grant_type: 'authorization_code',
-        client_id: clientId,
+        client_id: parseInt(clientId, 10), // Explicitly cast to integer for AniList
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         code,
