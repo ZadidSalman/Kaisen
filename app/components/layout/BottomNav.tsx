@@ -26,7 +26,7 @@ export function BottomNav({ className }: { className?: string }) {
       {navItems.map(item => {
         const isActive = pathname === item.path
         return (
-          <Link key={item.path} href={item.path} className={`
+          <Link key={item.label} href={item.path} className={`
             flex-1 flex flex-col items-center justify-center gap-1 relative interactive
             ${isActive ? 'text-accent' : 'text-ktext-tertiary'}
           `}>

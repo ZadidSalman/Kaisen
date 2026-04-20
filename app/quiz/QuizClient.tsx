@@ -81,10 +81,23 @@ export function QuizClient() {
   }
 
   const handleOptionSelect = useCallback(async (option: string) => {
-    if (selectedOption || timer === 0) return
+    if (selectedOption) return // Ensure we don't process multiple clicks
     
+    // Explicit timeout/skip handling
+    if (timer === 0 && !option) {
+       option = '__TIMEOUT__'
+    } else if (option === '__SKIP__') {
+       // if skipped manually
+    }
+
+    const isSkippedOrTimeout = option === '__TIMEOUT__' || option === '__SKIP__'
     setSelectedOption(option)
-    const correct = option === currentQuestion?.correctValue
+    
+    let correct = false
+    if (!isSkippedOrTimeout) {
+      correct = option === currentQuestion?.correctValue
+    }
+
     setIsCorrect(correct)
     
     if (correct) {
@@ -110,7 +123,7 @@ export function QuizClient() {
           atEntryId: currentQuestion?.questionTheme.entries[0]?.atEntryId,
           quizType,
           correct,
-          timeTaken: 20 - timer,
+          timeTaken: isSkippedOrTimeout ? 20 : 20 - timer,
           score: correct ? Math.ceil(timer * (1 + streak * 0.1)) : 0,
           streak: correct ? streak + 1 : 0
         })
@@ -122,7 +135,7 @@ export function QuizClient() {
     // Reveal play button to see what it was
     setShowPlayer(true)
     
-    // Auto next after 2 seconds if correct, 3 if wrong
+    // Auto next after 2 seconds if correct, 3 if wrong or skipped
     setTimeout(() => {
         if (gameState === 'playing') {
           if (totalQuestions >= 10) {
@@ -154,7 +167,7 @@ export function QuizClient() {
     }
 
     if (timer === 0 && !selectedOption && mediaReady) {
-      handleOptionSelect('') // Timeout
+      handleOptionSelect('') // This resolves as timeout in the handler
     }
 
     return () => {
@@ -412,8 +425,8 @@ export function QuizClient() {
                   {selectedOption && (
                     <div className="absolute top-4 right-4 z-50 animate-in zoom-in duration-300">
                        <div className={`px-4 py-2 rounded-full font-display font-bold text-white shadow-xl 
-                                     ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
-                          {isCorrect ? '✓ Correct!' : '✗ Wrong!'}
+                                     ${isCorrect ? 'bg-green-500' : selectedOption === '__TIMEOUT__' ? 'bg-orange-500' : selectedOption === '__SKIP__' ? 'bg-gray-500' : 'bg-red-500'}`}>
+                          {isCorrect ? '✓ Correct!' : selectedOption === '__TIMEOUT__' ? '⏱ Time\'s Up!' : selectedOption === '__SKIP__' ? '⏭ Skipped' : '✗ Wrong!'}
                        </div>
                     </div>
                   )}
@@ -451,6 +464,17 @@ export function QuizClient() {
                   </button>
                 )
              })}
+          </div>
+
+          <div className="flex justify-center mt-2">
+            {!selectedOption && (
+              <button 
+                onClick={() => handleOptionSelect('__SKIP__')}
+                className="px-6 py-2 bg-bg-surface border border-border-subtle rounded-full text-sm font-body text-ktext-secondary hover:text-ktext-primary hover:bg-bg-elevated transition-colors interactive"
+              >
+                Skip Question
+              </button>
+            )}
           </div>
 
           {selectedOption && !isCorrect && (

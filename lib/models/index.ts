@@ -345,19 +345,6 @@ FollowSchema.post('findOneAndDelete', async function (doc) {
 
 export const Follow = mongoose.models.Follow || mongoose.model('Follow', FollowSchema)
 
-const FriendshipSchema = new Schema({
-  requesterId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  addresseeId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  status:       { type: String, enum: ['pending','accepted','blocked'], default: 'pending' },
-  blockerId:    { type: Schema.Types.ObjectId, ref: 'User', default: null },
-}, { timestamps: true })
-
-FriendshipSchema.index({ requesterId: 1, addresseeId: 1 }, { unique: true })
-FriendshipSchema.index({ addresseeId: 1, status: 1 })
-FriendshipSchema.index({ requesterId: 1, status: 1 })
-
-export const Friendship = mongoose.models.Friendship || mongoose.model('Friendship', FriendshipSchema)
-
 const FavoriteSchema = new Schema({
   userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
   themeId:   { type: Schema.Types.ObjectId, ref: 'ThemeCache', required: true },

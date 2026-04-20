@@ -8,14 +8,17 @@ import { formatCount, getScoreColor, formatDuration, getFallbackAvatar } from '@
 import { FollowButton } from '@/app/components/shared/FollowButton'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 type Tab = 'activity' | 'history' | 'friends' | 'ratings'
 
 export function ProfileClient({ initialData }: { initialData: any }) {
   const { user: currentUser } = useAuth()
+  const searchParams = useSearchParams()
   const isOwn = currentUser?.username === initialData.username
   
-  const [activeTab, setActiveTab] = useState<Tab>('activity')
+  const initialTab = (searchParams.get('tab') as Tab) || 'activity'
+  const [activeTab, setActiveTab] = useState<Tab>(['activity', 'history', 'friends', 'ratings'].includes(initialTab) ? initialTab : 'activity')
   const [data, setData] = useState<any>({
     activity: [],
     history: [],
@@ -102,12 +105,8 @@ export function ProfileClient({ initialData }: { initialData: any }) {
             Edit Profile
           </button>
         ) : (
-          <div className="flex gap-3">
+          <div className="flex gap-3 w-full max-w-sm px-4 justify-center">
             <FollowButton username={initialData.username} label="Follow User" />
-            <button className="w-11 h-11 bg-bg-elevated border border-border-default
-                                text-ktext-primary flex items-center justify-center rounded-full interactive">
-              <MessageCircle className="w-5 h-5 opacity-70" />
-            </button>
           </div>
         )}
 
@@ -203,10 +202,10 @@ export function ProfileClient({ initialData }: { initialData: any }) {
                   <div>
                     <h3 className="text-sm font-display font-bold text-ktext-secondary mb-4 flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-accent-mint" />
-                      Following ({data.friends.following.length})
+                      Following ({data.friends.following?.length || 0})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {data.friends.following.length > 0 ? (
+                      {data.friends.following?.length > 0 ? (
                         data.friends.following.map((u: any) => <UserCard key={u.username} user={u} />)
                       ) : (
                         <p className="text-sm font-body text-ktext-tertiary italic px-4">Not following anyone yet.</p>
@@ -216,11 +215,11 @@ export function ProfileClient({ initialData }: { initialData: any }) {
 
                   <div>
                     <h3 className="text-sm font-display font-bold text-ktext-secondary mb-4 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-accent-ed" />
-                      Followers ({data.friends.followers.length})
+                      <div className="w-1.5 h-1.5 rounded-full bg-ktext-disabled" />
+                      Followers ({data.friends.followers?.length || 0})
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {data.friends.followers.length > 0 ? (
+                      {data.friends.followers?.length > 0 ? (
                         data.friends.followers.map((u: any) => <UserCard key={u.username} user={u} />)
                       ) : (
                         <p className="text-sm font-body text-ktext-tertiary italic px-4">No followers yet.</p>
@@ -281,8 +280,8 @@ function ActivityCard({ item }: { item: any }) {
 
 function UserCard({ user }: { user: any }) {
   return (
-    <Link href={`/user/${user.username}`} className="flex items-center gap-3 p-3 bg-bg-surface border border-border-subtle rounded-2xl interactive">
-      <div className="w-12 h-12 rounded-full overflow-hidden relative border border-border-subtle flex-shrink-0">
+    <div className="flex items-center gap-3 p-3 bg-bg-surface border border-border-subtle rounded-2xl">
+      <Link href={`/user/${user.username}`} className="w-12 h-12 rounded-full overflow-hidden relative border border-border-subtle flex-shrink-0 interactive">
         <Image 
           src={user.avatarUrl ?? getFallbackAvatar(user.username)} 
           fill 
@@ -290,12 +289,14 @@ function UserCard({ user }: { user: any }) {
           className="object-cover" 
           alt={user.displayName} 
         />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link href={`/user/${user.username}`} className="hover:text-accent transition-colors">
+          <p className="text-sm font-display font-bold text-ktext-primary truncate">{user.displayName}</p>
+          <p className="text-xs font-body text-ktext-tertiary truncate">@{user.username}</p>
+        </Link>
       </div>
-      <div className="min-w-0">
-        <p className="text-sm font-display font-bold text-ktext-primary truncate">{user.displayName}</p>
-        <p className="text-xs font-body text-ktext-tertiary truncate">@{user.username}</p>
-      </div>
-    </Link>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
-import { ThemeCache } from '@/lib/models'
+import { ThemeCache, User } from '@/lib/models'
 import { getQueryEmbedding } from '@/lib/embedding'
 
 const MOOD_WORDS = [
@@ -29,6 +29,22 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
     const qLower = q.toLowerCase()
 
+    // ── User Search ──────────────────────────
+    // Search for users to allow adding friends
+    let users = []
+    if (page === 1 && !type) {
+       users = await User.find({
+          $or: [
+             { username: { $regex: q, $options: 'i' } },
+             { displayName: { $regex: q, $options: 'i' } }
+          ],
+          isPublic: true
+       })
+       .select('username displayName avatarUrl bio')
+       .limit(5)
+       .lean()
+    }
+
     // Detect mood words in query
     const detectedMoods = MOOD_WORDS.filter(w => qLower.includes(w))
     const isMoodQuery = detectedMoods.length > 0
@@ -51,6 +67,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           success: true,
           data: textResults,
+          users,
           meta: {
             page,
             total: textTotal,
@@ -81,6 +98,7 @@ export async function GET(req: NextRequest) {
        return NextResponse.json({
          success: true,
          data: results,
+         users,
          meta: {
            page,
            total,
@@ -96,6 +114,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         success: true,
         data: [],
+        users,
         meta: { page: 1, total: 0, hasMore: false, searchType: 'none' },
       })
     }
@@ -123,6 +142,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: semanticResults,
+      users,
       meta: {
         page: 1,
         total: semanticResults.length,

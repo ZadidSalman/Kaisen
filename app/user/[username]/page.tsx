@@ -5,6 +5,7 @@ import { NavigationRail } from '@/app/components/layout/NavigationRail'
 import { notFound } from 'next/navigation'
 import { connectDB } from '@/lib/db'
 import { User } from '@/lib/models'
+import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +44,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
       ">
         <div className="max-w-2xl mx-auto md:max-w-7xl">
           <AppHeader />
-          <ProfileClient initialData={serializedUser} />
+          <Suspense fallback={<div className="p-8 text-center text-ktext-tertiary">Loading profile...</div>}>
+            <ProfileClient initialData={serializedUser} />
+          </Suspense>
         </div>
       </main>
       <BottomNav className="flex md:hidden" />

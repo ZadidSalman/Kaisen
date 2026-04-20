@@ -2,7 +2,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Trophy, Bell, User, Settings, Library } from 'lucide-react'
+import { Home, Search, Trophy, Bell, User, Settings, Library, Users } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getFallbackAvatar } from '@/lib/utils'
 
@@ -15,6 +15,7 @@ export function NavigationRail({ className }: { className?: string }) {
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
     { path: '/library', icon: Library, label: 'Library' },
+    { path: user ? `/user/${user.username}?tab=friends` : '/login', icon: Users, label: 'Network' },
     { path: '/notifications', icon: Bell, label: 'Notifications' },
     { path: user ? `/user/${user.username}` : '/login', icon: User, label: 'Profile' },
   ]
@@ -32,9 +33,9 @@ export function NavigationRail({ className }: { className?: string }) {
       
       <div className="space-y-2">
         {navItems.map(item => {
-          const isActive = pathname === item.path
+          const isActive = pathname === item.path || (item.label === 'Network' && pathname.includes('/user/') && typeof window !== 'undefined' && window.location.search.includes('friends'))
           return (
-            <Link key={item.path} href={item.path} className={`
+            <Link key={item.label} href={item.path} className={`
               flex items-center gap-3 mx-2 px-3 py-3 rounded-full
               transition-colors duration-150 interactive
               ${isActive ? 'bg-accent-container text-accent' : 'text-ktext-secondary hover:text-ktext-primary'}
