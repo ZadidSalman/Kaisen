@@ -35,16 +35,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Exchange code for token
-    // Reverting to application/x-www-form-urlencoded as it is the official OAuth2 standard
-    const tokenParams = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      client_secret: clientSecret,
-      redirect_uri: redirectUri,
-      code,
-    })
-
-    console.log('[AniList Debug] Attempting token exchange with (URLEncoded):', {
+    // AniList API requires application/json (per official docs)
+    console.log('[AniList Debug] Attempting token exchange with:', {
       clientId,
       redirectUri,
       hasCode: !!code
@@ -53,10 +45,16 @@ export async function GET(req: NextRequest) {
     const tokenRes = await fetch('https://anilist.co/api/v2/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: tokenParams.toString(),
+      body: JSON.stringify({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        code,
+      }),
     })
 
     const tokenData = await tokenRes.json()
