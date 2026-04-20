@@ -6,6 +6,15 @@ import { verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/aut
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
+
+  // TEMPORARY — remove after debugging
+  console.log('[AniList Debug] Env vars:', {
+    clientId:    process.env.ANILIST_CLIENT_ID,
+    secretFirst4: process.env.ANILIST_CLIENT_SECRET?.slice(0, 4),
+    redirectUri: process.env.ANILIST_REDIRECT_URI,
+    hasCode:     !!code,
+  })
+
   const error = searchParams.get('error')
 
   if (error || !code) {
