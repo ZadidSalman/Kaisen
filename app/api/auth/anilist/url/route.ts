@@ -4,8 +4,13 @@ import { verifyRefreshToken } from '@/lib/auth'
 export async function GET(req: NextRequest) {
   try {
     const clientId = process.env.ANILIST_CLIENT_ID
-    if (!clientId) {
-      return NextResponse.json({ success: false, error: 'AniList Client ID not configured' }, { status: 500 })
+    const clientSecret = process.env.ANILIST_CLIENT_SECRET
+
+    if (!clientId || !clientSecret) {
+      return NextResponse.json({ 
+        success: false, 
+        error: `Configuration Error: ${!clientId ? 'ANILIST_CLIENT_ID' : 'ANILIST_CLIENT_SECRET'} is missing in Vercel environment variables.` 
+      }, { status: 500 })
     }
 
     const host = req.headers.get('host')

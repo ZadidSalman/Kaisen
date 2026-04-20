@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
     const tokenData = await tokenRes.json()
     if (!tokenData.access_token) {
       console.error('[AniList Callback] Token exchange failed:', tokenData)
-      return handleResponse(false, 'Failed to exchange token')
+      const errorMsg = tokenData.error === 'invalid_client' 
+        ? 'AniList rejected your Client ID/Secret. Please check your Vercel Environment Variables.'
+        : tokenData.message || tokenData.error || 'Failed to exchange token'
+      return handleResponse(false, errorMsg)
     }
 
     // Fetch AniList user info
