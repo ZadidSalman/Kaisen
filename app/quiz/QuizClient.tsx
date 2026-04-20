@@ -1,11 +1,13 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Trophy, Timer, Zap, RotateCcw, Play, Pause, AlertCircle, Headphones, Video, User } from 'lucide-react'
+import { Trophy, Timer, Zap, RotateCcw, Play, Pause, AlertCircle, Headphones, Video, User, Library, Globe } from 'lucide-react'
 import { formatCount, getFallbackAvatar } from '@/lib/utils'
 import Image from 'next/image'
+import { useAuth } from '@/hooks/useAuth'
 
 type QuizType = 'anime' | 'title' | 'artist'
+type QuizSource = 'random' | 'library'
 
 interface Question {
   questionTheme: any
@@ -14,8 +16,10 @@ interface Question {
 }
 
 export function QuizClient() {
+  const { user } = useAuth()
   const [gameState, setGameState] = useState<'lobby' | 'playing' | 'result'>('lobby')
   const [quizType, setQuizType] = useState<QuizType>('anime')
+  const [quizSource, setQuizSource] = useState<QuizSource>('random')
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
   const [loading, setLoading] = useState(false)
   const [score, setScore] = useState(0)
@@ -33,7 +37,7 @@ export function QuizClient() {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
-  const fetchQuestion = useCallback(async (type: QuizType) => {
+  const fetchQuestion = useCallback(async (type: QuizType, source: QuizSource = quizSource) => {
     if (totalQuestions >= 10 && totalQuestions > 0) {
       setGameState('result')
       return
@@ -45,19 +49,22 @@ export function QuizClient() {
     setShowPlayer(false)
     setMediaReady(false)
     try {
-      const res = await fetch(`/api/quiz/question?type=${type}`)
+      const res = await fetch(`/api/quiz/question?type=${type}&source=${source}`)
       const json = await res.json()
       if (json.success) {
         setCurrentQuestion(json.data)
         setTimer(20)
         setTotalQuestions(prev => prev + 1)
+      } else {
+        throw new Error(json.error || 'Failed to fetch question')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch question:', err)
+      // If library fails, maybe fallback to random or show error
     } finally {
       setLoading(false)
     }
-  }, [totalQuestions])
+  }, [totalQuestions, quizSource])
 
   const startQuiz = (type: QuizType) => {
     setQuizType(type)
@@ -67,7 +74,7 @@ export function QuizClient() {
     setCorrectCount(0)
     setMaxStreak(0)
     setGameState('playing')
-    fetchQuestion(type)
+    fetchQuestion(type, quizSource)
   }
 
   const handleOptionSelect = useCallback(async (option: string) => {
@@ -158,6 +165,41 @@ export function QuizClient() {
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-display font-black text-ktext-primary tracking-tight">Theme Quiz</h1>
           <p className="text-ktext-secondary font-body">Ready to prove your anime knowledge?</p>
+        </div>
+
+        {/* Source Toggle */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="bg-bg-surface p-1 rounded-2xl border border-border-subtle shadow-sm flex items-center gap-1">
+            <button
+              onClick={() => setQuizSource('random')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-body font-bold text-sm transition-all interactive
+                ${quizSource === 'random' 
+                  ? 'bg-accent text-white shadow-md' 
+                  : 'text-ktext-secondary hover:text-ktext-primary hover:bg-bg-elevated'}`}
+            >
+              <Globe className="w-4 h-4" />
+              Global Themes
+            </button>
+            <button
+              onClick={() => setQuizSource('library')}
+              disabled={!user?.anilist?.userId}
+              title={!user?.anilist?.userId ? 'Connect AniList to use your library' : ''}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-body font-bold text-sm transition-all interactive
+                ${quizSource === 'library' 
+                  ? 'bg-accent text-white shadow-md' 
+                  : !user?.anilist?.userId 
+                    ? 'opacity-40 cursor-not-allowed text-ktext-disabled' 
+                    : 'text-ktext-secondary hover:text-ktext-primary hover:bg-bg-elevated'}`}
+            >
+              <Library className="w-4 h-4" />
+              My Library
+            </button>
+          </div>
+          {!user?.anilist?.userId && (
+            <p className="text-[10px] font-body text-ktext-tertiary uppercase tracking-wider">
+              Login with AniList to quiz on your completed list
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

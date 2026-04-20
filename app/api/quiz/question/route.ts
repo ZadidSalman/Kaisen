@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
-import { ThemeCache } from '@/lib/models'
+import { ThemeCache, User } from '@/lib/models'
+import { proxy } from '@/proxy'
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,10 +9,62 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type') // 'anime', 'title', 'artist'
+    const source = searchParams.get('source') || 'random'
+
+    let themePoolFilter: any = { audioUrl: { $ne: null } }
+
+    if (source === 'library') {
+      const payload = proxy(req)
+      if (!payload) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+      }
+
+      const user = await User.findById(payload.userId)
+      if (!user || !user.anilist?.accessToken) {
+        return NextResponse.json({ success: false, error: 'AniList not connected' }, { status: 400 })
+      }
+
+      // Fetch completed media IDs from AniList (reusing logic or getting from DB if we cached them? 
+      // For now, let's fetch IDs to be fresh)
+      const anilistRes = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.anilist.accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `
+            query ($userId: Int) {
+              MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
+                lists {
+                  entries {
+                    mediaId
+                  }
+                }
+              }
+            }
+          `,
+          variables: { userId: user.anilist.userId }
+        }),
+      })
+
+      const anilistData = await anilistRes.json()
+      const entries = anilistData.data?.MediaListCollection?.lists?.flatMap((list: any) => list.entries) || []
+      const mediaIds = entries.map((e: any) => e.mediaId)
+
+      if (mediaIds.length === 0) {
+        return NextResponse.json({ success: false, error: 'Your AniList library is empty' }, { status: 404 })
+      }
+
+      themePoolFilter.anilistId = { $in: mediaIds }
+    } else {
+      themePoolFilter.isPopular = true
+    }
 
     // 1. Get the correct theme
     const [correctTheme] = await ThemeCache.aggregate([
-      { $match: { audioUrl: { $ne: null }, isPopular: true } }, // Ensure we have audio at least, and it's popular
+      { $match: themePoolFilter },
       { $sample: { size: 1 } },
     ])
 
@@ -21,10 +74,20 @@ export async function GET(req: NextRequest) {
 
     // 2. Get 3 distractors
     // We want distractors that are different from the correct one based on the quiz type
-    let filter: any = { _id: { $ne: correctTheme._id }, isPopular: true }
+    // Distractors can come from the global pool to ensure they are diverse, or from library if available
+    let distractorFilter: any = { _id: { $ne: correctTheme._id }, isPopular: true }
     
+    // For artist quiz, ensure distractors have an artist name
+    if (type === 'artist') {
+      distractorFilter.artistName = { $ne: null, $ne: correctTheme.artistName }
+    } else if (type === 'title') {
+      distractorFilter.songTitle = { $ne: correctTheme.songTitle }
+    } else {
+      distractorFilter.animeTitle = { $ne: correctTheme.animeTitle }
+    }
+
     const distractors = await ThemeCache.aggregate([
-      { $match: filter },
+      { $match: distractorFilter },
       { $sample: { size: 3 } },
     ])
 
