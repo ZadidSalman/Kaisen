@@ -24,11 +24,11 @@ export function getScoreLabel(score: number): string {
 }
 
 export function formatCount(n: number): string {
-  if (n === undefined || n === null) return '0'
+  if (n === undefined || n === null || isNaN(n)) return '0'
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`
   if (n >= 1_000_000)     return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000)         return `${(n / 1_000).toFixed(1)}k`
-  return n.toString()
+  return Math.floor(n).toString()
 }
 
 export function timeAgo(date: Date | string): string {

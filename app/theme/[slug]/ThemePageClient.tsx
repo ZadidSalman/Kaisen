@@ -80,8 +80,8 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
     setHasWatched(true)
     setTheme(prev => ({
       ...prev,
-      totalWatches: mode === 'watch' ? prev.totalWatches + 1 : prev.totalWatches,
-      totalListens: mode === 'listen' ? prev.totalListens + 1 : prev.totalListens
+      totalWatches: mode === 'watch' ? (prev.totalWatches || 0) + 1 : (prev.totalWatches || 0),
+      totalListens: mode === 'listen' ? (prev.totalListens || 0) + 1 : (prev.totalListens || 0)
     }))
   }, [mode])
 
@@ -145,8 +145,8 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
         <div className="flex gap-2">
           {[
             { value: theme.avgRating?.toFixed(1) ?? '—', label: 'AVG RATING', color: getScoreColor(Math.round(theme.avgRating || 0)) },
-            { value: formatCount(theme.totalRatings), label: 'RATINGS' },
-            { value: formatCount(theme.totalWatches), label: 'WATCHES' },
+            { value: formatCount(theme.totalRatings || 0), label: 'RATINGS' },
+            { value: formatCount(theme.totalWatches || 0), label: 'WATCHES' },
             { value: formatCount(theme.totalListens || 0), label: 'LISTENS' },
           ].map(stat => (
             <div key={stat.label} className="flex-1 bg-bg-elevated rounded-[16px] p-2 text-center">

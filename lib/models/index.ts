@@ -253,8 +253,9 @@ RatingSchema.post('save', async function () {
     { $match: { themeId: this.themeId } },
     { $group: { _id: null, avg: { $avg: '$score' }, count: { $sum: 1 } } },
   ])
+  const avg = stats[0]?.avg ?? 0
   await mongoose.model('ThemeCache').findByIdAndUpdate(this.themeId, {
-    avgRating:    parseFloat((stats[0]?.avg ?? 0).toFixed(2)),
+    avgRating:    isNaN(avg) ? 0 : parseFloat(avg.toFixed(2)),
     totalRatings: stats[0]?.count ?? 0,
   })
   if (this.isNew) {
@@ -289,17 +290,20 @@ WatchHistorySchema.post('save', async function (doc) {
       console.log(`[WatchHistory Hook] Incrementing ${field} for theme ${theme.slug}`)
       
       // Atomic increment on theme
+      // Ensure fields exist or start from 0 to prevent NaN
       await mongoose.model('ThemeCache').findByIdAndUpdate(doc.themeId, { 
         $inc: { [field]: 1 } 
       })
       
       // Find the entry that was watched
       const entry = theme.entries.find((e: any) => e.atEntryId === doc.atEntryId) || theme.entries[0]
-      const entryDuration = entry?.duration || 90
+      const entryDuration = Number(entry?.duration) || 90
       
       console.log(`[WatchHistory Hook] Found entry with duration: ${entryDuration}s. Incrementing User ${doc.userId} totalTime.`)
       
       // Explicitly find and atomic increment user to avoid missing doc
+      // Using $inc on a missing field initializes it, but we can also use $setOnInsert or similar if we wanted, 
+      // but standard $inc is usually safe.
       const updatedUser = await mongoose.model('User').findByIdAndUpdate(doc.userId, { 
         $inc: { totalTime: entryDuration } 
       }, { new: true, upsert: false })
