@@ -5,6 +5,8 @@ import { Trophy, Timer, Zap, RotateCcw, Play, Pause, AlertCircle, Headphones, Vi
 import { formatCount, getFallbackAvatar } from '@/lib/utils'
 import Image from 'next/image'
 import { useAuth } from '@/hooks/useAuth'
+import { authFetch } from '@/lib/auth-client'
+import { toast } from 'sonner'
 
 type QuizType = 'anime' | 'title' | 'artist'
 type QuizSource = 'random' | 'library'
@@ -49,7 +51,7 @@ export function QuizClient() {
     setShowPlayer(false)
     setMediaReady(false)
     try {
-      const res = await fetch(`/api/quiz/question?type=${type}&source=${source}`)
+      const res = await authFetch(`/api/quiz/question?type=${type}&source=${source}`)
       const json = await res.json()
       if (json.success) {
         setCurrentQuestion(json.data)
@@ -60,7 +62,8 @@ export function QuizClient() {
       }
     } catch (err: any) {
       console.error('Failed to fetch question:', err)
-      // If library fails, maybe fallback to random or show error
+      toast.error(err.message || 'Error fetching question from library.')
+      setGameState('lobby') // Return to lobby on failure so we don't infinitely retry or get stuck
     } finally {
       setLoading(false)
     }
@@ -99,7 +102,7 @@ export function QuizClient() {
 
     // Save attempt
     try {
-      await fetch('/api/quiz/submit', {
+      await authFetch('/api/quiz/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -3,6 +3,8 @@ import { connectDB } from '@/lib/db'
 import { ThemeCache, User } from '@/lib/models'
 import { proxy } from '@/proxy'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
