@@ -167,16 +167,25 @@ function handleResponse(success: boolean, message?: string, user?: any) {
 
   const script = success 
     ? `window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', accessToken: '${accessToken}' }, '*'); window.close();`
-    : `window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${message}' }, '*'); setTimeout(() => window.close(), 3000);`
+    : `window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${message}' }, '*'); setTimeout(() => window.close(), 5000);`
+
+  const errorMessage = message === 'Auth failed or cancelled' 
+    ? 'Authentication code missing. This page should not be visited directly. Please use the login button in the app.'
+    : message;
 
   return new NextResponse(
-    `<html>
-      <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0b0b0b; color: white;">
-        <div style="text-align: center;">
-          <div style="font-size: 40px; margin-bottom: 20px;">${success ? '≋' : '✕'}</div>
-          <h2>${success ? 'Welcome to Kaikansen!' : 'Error'}</h2>
-          <p>${success ? 'Authentication successful. Redirecting...' : message}</p>
-          <p style="font-size: 12px; color: #666;">This window will close automatically.</p>
+    `<!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>${success ? 'Success' : 'Error'}</title>
+      </head>
+      <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0b0b0b; color: white; margin: 0;">
+        <div style="text-align: center; max-width: 400px; padding: 20px;">
+          <div style="font-size: 64px; margin-bottom: 24px;">${success ? '≋' : '✕'}</div>
+          <h2 style="margin-bottom: 12px; font-size: 24px;">${success ? 'Welcome to Kaikansen!' : 'Authentication Error'}</h2>
+          <p style="color: #aaa; line-height: 1.5;">${success ? 'You have successfully signed in. This window will close automatically.' : errorMessage}</p>
+          ${!success ? '<p style="margin-top: 20px; font-size: 13px; color: #666;">This window will close in a few seconds...</p>' : ''}
         </div>
         <script>${script}</script>
       </body>
