@@ -23,7 +23,7 @@ export function FollowButton({ username, label = 'Follow' }: FollowButtonProps) 
         return
       }
       try {
-        const res = await fetch(`/api/follow/${username}`)
+        const res = await authFetch(`/api/follow/${username}`)
         const data = await res.json()
         if (data.success) {
           setIsFollowing(data.isFollowing)
