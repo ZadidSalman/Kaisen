@@ -8,7 +8,7 @@ export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname()
   const { user } = useAuth()
 
-  const navItems = [
+  const navItems: { path: string; icon: any; label: string; badge?: number }[] = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },

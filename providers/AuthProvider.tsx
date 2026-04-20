@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
 import { AuthUser } from '@/types/app.types'
-import { refreshAccessToken, setAccessToken } from '@/lib/auth-client'
+import { refreshAccessToken, setAccessToken, getAccessToken } from '@/lib/auth-client'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
