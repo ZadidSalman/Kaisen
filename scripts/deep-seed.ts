@@ -178,7 +178,7 @@ async function deepSeed() {
       isPopular: Boolean,
       popularRank: Number,
       featuredAt: Date,
-       synchedAt: Date,
+      synchedAt: Date,
   }, { strict: false }));
 
   const lines = rawList.split('\n');
@@ -213,26 +213,106 @@ async function deepSeed() {
     }
   });
 
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
   console.log(`Starting deep seed for ${pairs.length} pairs...`);
 
   for (const pair of pairs) {
-    let cleanAnime = pair.anime.replace(/season \d+/i, '').replace(/ S\d+/i, '').replace(/ OVA/i, '').replace('2nd Season', '').trim();
+    let cleanAnime = pair.anime
+      .replace(/season \d+/i, '')
+      .replace(/ S\d+/i, '')
+      .replace(/ OVA/i, '')
+      .replace('2nd Season', '')
+      .replace('3rd Season', '')
+      .replace('Final Season', '')
+      .trim();
+
     if (cleanAnime === 'FMA:B') cleanAnime = 'Fullmetal Alchemist';
     if (cleanAnime === 'SAO') cleanAnime = 'Sword Art Online';
     if (cleanAnime === 'MHA') cleanAnime = 'My Hero Academia';
     if (cleanAnime === 'Deer Child') cleanAnime = 'Shikanoko';
+    if (cleanAnime === 'Fire Force') cleanAnime = 'Enen no Shouboutai';
+    if (cleanAnime === 'Dan Da Dan') cleanAnime = 'Dandadan';
+    if (cleanAnime === 'Dan Da Dan S2') cleanAnime = 'Dandadan';
+    if (cleanAnime === 'Call of the Night') cleanAnime = 'Yofukashi no Uta';
+    if (cleanAnime === 'Hell\'s Paradise') cleanAnime = 'Jigokuraku';
+    if (cleanAnime === 'Demon Slayer') cleanAnime = 'Kimetsu no Yaiba';
+    if (cleanAnime === 'Scum\'s Wish') cleanAnime = 'Kuzu no Honkai';
+    if (cleanAnime === 'Monogatari') cleanAnime = 'Nisemonogatari';
+    if (cleanAnime === 'Mob Psycho') cleanAnime = 'Mob Psycho 100';
+    if (cleanAnime === 'Your Name') cleanAnime = 'Kimi no Na wa.';
+    if (cleanAnime === 'Parasyte') cleanAnime = 'Kiseijuu: Sei no Kakuritsu';
+    if (cleanAnime === 'Anohana') cleanAnime = 'Ano Hi Mita Hana no Namae wo Bokutachi wa Mada Shiranai.';
+
+    const overrides: Record<string, string> = {
+      "A Cruel Angel's Thesis": "Zankoku na Tenshi no Thesis",
+      "The Hero!!": "THE HERO !! ~Okoreru Kobushi ni Hi wo Tsukero~",
+      "Bling-Bang-Bang-Born": "Bling-Bang-Bang-Born",
+      "Bling": "Bling-Bang-Bang-Born",
+      "Kimi Janakya Dame Mitai": "Kimi Janakya Dame Mitai",
+      "Gekkan Shoujo Nozaki-kun": "Kimi Janakya Dame Mitai",
+      "Gekkan Shoujo Nozaki": "Kimi Janakya Dame Mitai",
+      "Inner Universe": "inner universe",
+      "Sugar Song to Bitter Step": "Sugar Song to Bitter Step",
+      "Butter-Fly": "Butter-Fly",
+      "Butter": "Butter-Fly",
+      "CHA-LA HEAD-CHA-LA": "CHA-LA HEAD-CHA-LA",
+      "Cha": "CHA-LA HEAD-CHA-LA",
+      "Peace Sign": "Peace Sign",
+      "Asterisk": "*~Asterisk~",
+      "Zankyou Sanka": "Zankyou Zanka",
+      "Departure!": "departure!",
+      "Odd Future": "ODD FUTURE",
+      "Bloody Stream": "BLOODY STREAM",
+      "Great Days": "Great Days",
+      "Stand Proud": "STAND PROUD",
+      "Fly High!!": "FLY HIGH",
+      "99.9": "99.9",
+      "Ready Steady Go": "READY STEADY GO",
+      "Where Our Blue Is": "Ao no Sumika",
+      "Brave": "Yuusha",
+      "Work": "W●RK",
+      "Utopia": "Kamihitoe",
+      "Mirage": "Mirage",
+      "Mephisto": "Mephisto",
+      "Dream Lantern": "Yume Tourou",
+      "I Will Give You a Romance": "Romance wo Ageru yo",
+      "Anytime Anywhere": "Anytime Anywhere",
+      "Comedy": "Kigeki",
+      "Shock": "Shogeki",
+      "Tougenkyou Alien": "Tougenkyou Alien",
+      "History Maker": "History Maker",
+      "Roundabout": "Roundabout",
+      "Walk Like an Egyptian": "Walk Like an Egyptian",
+      "I Want You": "I Want You",
+      "Secret Base (Kimi ga Kureta Mono)": "secret base ~Kimi ga Kureta Mono~",
+      "Kyomu Densen": "Kyoumu Densen",
+      "O2": "02~O-Two~",
+      "On The Way": "Kakumei Douchuu",
+      "Platinum Disco": "Platinum Disco",
+      "Sparkle": "Sparkle",
+      "99": "99",
+      "Heikousen": "Heikousen",
+      "Seishun Kyousoukyoku": "Seishun Kyousoukyoku",
+      "Sajou no Hana": "Sajou no Hana",
+      "Let Me Hear": "Let Me Hear",
+      "This Is It": "ReawakeR"
+    };
+
+    const targetSongNorm = normalize(overrides[pair.song] || pair.song);
 
     // 1. Check local DB first
+    const regexAnime = new RegExp(cleanAnime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     let themeMatch = await ThemeCache.findOne({
       $or: [
-        { animeTitle: new RegExp(cleanAnime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
-        { animeTitleEnglish: new RegExp(cleanAnime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
-        { animeTitleAlternative: new RegExp(cleanAnime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+        { animeTitle: { $regex: regexAnime } },
+        { animeTitleEnglish: { $regex: regexAnime } },
+        { animeTitleAlternative: { $regex: regexAnime } }
       ],
-      songTitle: new RegExp(pair.song.substring(0, 10).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      songTitle: new RegExp(pair.song.substring(0, 5).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
     });
 
-    if (themeMatch) {
+    if (themeMatch && (normalize(themeMatch.songTitle).includes(targetSongNorm) || targetSongNorm.includes(normalize(themeMatch.songTitle)))) {
       console.log(`[LOCAL] Found ${pair.song} in ${pair.anime}`);
       await ThemeCache.findByIdAndUpdate(themeMatch._id, {
         isPopular: true,
@@ -248,8 +328,8 @@ async function deepSeed() {
       await delay(AT_DELAY_MS);
       const include = 'animethemes.animethemeentries.videos,images,studios,series,animethemes.song.artists';
       
-      // Try searching by anime name first using a broader filter
-      let searchUrl = `https://api.animethemes.moe/anime?filter[search]=${encodeURIComponent(cleanAnime)}&include=${include}`;
+      // Try searching by anime name first using q parameter
+      let searchUrl = `https://api.animethemes.moe/anime?q=${encodeURIComponent(cleanAnime)}&page[size]=50&include=${include}`;
       let res = await fetch(searchUrl, { headers: { 'User-Agent': 'Kaikansen/1.0.0' } });
       let data = await res.json() as any;
 
@@ -259,9 +339,8 @@ async function deepSeed() {
         for (const anime of data.anime) {
           const themes = anime.animethemes ?? [];
           for (const atTheme of themes) {
-            const songTitle = atTheme.song?.title?.toLowerCase() || '';
-            const targetSong = pair.song.toLowerCase();
-            if (songTitle.includes(targetSong) || targetSong.includes(songTitle)) {
+            const songTitleNorm = normalize(atTheme.song?.title || '');
+            if (songTitleNorm.includes(targetSongNorm) || targetSongNorm.includes(songTitleNorm)) {
               atTheme.anime = anime;
               bestTheme = atTheme;
               break;
@@ -271,28 +350,35 @@ async function deepSeed() {
         }
       }
 
-      // If no match found by anime name, try searching by song title
+      // If no match found by anime name, try searching by song title directly
       if (!bestTheme) {
         await delay(AT_DELAY_MS);
-        const songUrl = `https://api.animethemes.moe/animetheme?filter[song][title]=${encodeURIComponent(pair.song)}&include=anime.images,anime.studios,anime.series,animethemeentries.videos,song.artists`;
+        const songQuery = overrides[pair.song] || pair.song;
+        const songUrl = `https://api.animethemes.moe/animetheme?q=${encodeURIComponent(songQuery)}&page[size]=50&include=anime.images,anime.studios,anime.series,animethemeentries.videos,song.artists`;
         const songRes = await fetch(songUrl, { headers: { 'User-Agent': 'Kaikansen/1.0.0' } });
         const songData = await songRes.json() as any;
 
         if (songData.animethemes && songData.animethemes.length > 0) {
-          // Look for an anime name that matches our target
           for (const st of songData.animethemes) {
             const animeName = st.anime?.name?.toLowerCase() || '';
+            const animeEng = st.anime?.name_english?.toLowerCase() || '';
+            const animeAlt = (st.anime?.name_alternatives || []).map((a: any) => a.name?.toLowerCase() || '');
             const targetAnime = cleanAnime.toLowerCase();
-            if (animeName.includes(targetAnime) || targetAnime.includes(animeName)) {
+            
+            if (animeName.includes(targetAnime) || targetAnime.includes(animeName) ||
+                animeEng.includes(targetAnime) || targetAnime.includes(animeEng) ||
+                animeAlt.some((a: string) => a.includes(targetAnime) || targetAnime.includes(a))) {
               bestTheme = st;
               break;
             }
-            // Even if anime name doesn't match perfectly, if it's the only one found and song title is exact, maybe it's it?
-            // But let's be safe.
           }
-          // If still no bestTheme, take the first one if the song title is very close
-          if (!bestTheme && songData.animethemes[0].song?.title?.toLowerCase() === pair.song.toLowerCase()) {
-             bestTheme = songData.animethemes[0];
+          
+          if (!bestTheme && songData.animethemes.length === 1) {
+             const st = songData.animethemes[0];
+             const stNorm = normalize(st.song?.title || '');
+             if (stNorm === targetSongNorm || stNorm.includes(targetSongNorm)) {
+                bestTheme = st;
+             }
           }
         }
       }

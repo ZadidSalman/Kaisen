@@ -10,6 +10,7 @@ interface AuthContextType {
   setUser: (user: AuthUser | null) => void
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -62,8 +63,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login')
   }
 
+  const refreshUser = async () => {
+    try {
+      let token = getAccessToken()
+      if (!token) token = await refreshAccessToken()
+      
+      const res = await fetch('/api/users/me', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success) {
+        setUser(data.data)
+      }
+    } catch (err) {
+      console.error('Refresh user failed:', err)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, setUser, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, setUser, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

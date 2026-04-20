@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Trophy, Bell, User } from 'lucide-react'
+import { Home, Search, Trophy, Library, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export function BottomNav({ className }: { className?: string }) {
@@ -12,7 +12,7 @@ export function BottomNav({ className }: { className?: string }) {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
-    { path: '/notifications', icon: Bell, label: 'Inbox', badge: 0 },
+    { path: '/library', icon: Library, label: 'Library' },
     { path: user ? `/user/${user.username}` : '/login', icon: User, label: 'Profile' },
   ]
 

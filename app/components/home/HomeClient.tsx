@@ -1,31 +1,48 @@
 'use client'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { useInView } from 'react-intersection-observer'
 import { ThemeFeaturedCard } from '@/app/components/theme/ThemeFeaturedCard'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { SurpriseBanner } from '@/app/components/shared/SurpriseBanner'
 import { fetchPopularThemes, fetchSeasonalThemes } from '@/lib/api/themes'
 import { queryKeys } from '@/lib/queryKeys'
 import { useAuth } from '@/hooks/useAuth'
+import { Loader2 } from 'lucide-react'
 
 export function HomeClient() {
   const { user } = useAuth()
   const [typeFilter, setTypeFilter] = useState<'OP' | 'ED' | null>(null)
+
+  const { ref, inView } = useInView()
 
   const { data: seasonalData } = useQuery({
     queryKey: queryKeys.themes.seasonal('SPRING', 2024), // Example current season
     queryFn: () => fetchSeasonalThemes('SPRING', 2024),
   })
 
-  const { data: popularData } = useQuery({
+  const {
+    data: popularData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery({
     queryKey: queryKeys.themes.popular(typeFilter ?? undefined),
-    queryFn: () => fetchPopularThemes(typeFilter ?? undefined),
+    queryFn: ({ pageParam = 1 }) => fetchPopularThemes(typeFilter ?? undefined, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.meta.hasMore ? lastPage.meta.page + 1 : undefined,
   })
 
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
   const featuredThemes = seasonalData?.data?.slice(0, 10) ?? []
-  const popularThemes = popularData?.data ?? []
+  const popularThemes = popularData?.pages.flatMap(page => page.data) ?? []
 
   return (
     <div className="space-y-6 pt-4 pb-20">
@@ -75,7 +92,22 @@ export function HomeClient() {
         </div>
         <div className="space-y-2">
           {popularThemes.length > 0 ? (
-            popularThemes.map((theme: any) => <ThemeListRow key={theme.slug} {...theme} />)
+            <>
+              {popularThemes.map((theme: any, index: number) => (
+                <ThemeListRow key={`${theme.slug}-${index}`} {...theme} />
+              ))}
+              
+              {/* Sentinel for Intersection Observer */}
+              <div ref={ref} className="py-4 flex justify-center">
+                {isFetchingNextPage ? (
+                  <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                ) : hasNextPage ? (
+                  <div className="h-10" />
+                ) : (
+                  <p className="text-xs text-ktext-secondary font-body">You&apos;ve reached the end of the hall of fame! ✨</p>
+                )}
+              </div>
+            </>
           ) : (
             [...Array(5)].map((_, i) => (
               <div key={i} className="h-20 rounded-[16px] bg-bg-elevated shimmer" />

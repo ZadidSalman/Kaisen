@@ -23,3 +23,8 @@ export async function fetchLiveStats() {
   const res = await fetch('/api/stats/live')
   return res.json()
 }
+
+export async function fetchLibraryThemes() {
+  const res = await authFetch('/api/themes/library')
+  return res.json()
+}

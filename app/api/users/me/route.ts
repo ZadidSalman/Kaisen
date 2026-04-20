@@ -29,6 +29,10 @@ export async function GET(req: NextRequest) {
         totalRatings: user.totalRatings,
         totalFollowers: user.totalFollowers,
         totalFollowing: user.totalFollowing,
+        anilist: user.anilist ? {
+          userId: user.anilist.userId,
+          username: user.anilist.username,
+        } : null,
       }
     })
   } catch (err) {
@@ -76,6 +80,10 @@ export async function PATCH(req: NextRequest) {
         totalRatings: user.totalRatings,
         totalFollowers: user.totalFollowers,
         totalFollowing: user.totalFollowing,
+        anilist: user.anilist ? {
+          userId: user.anilist.userId,
+          username: user.anilist.username,
+        } : null,
       }
     })
   } catch (err) {

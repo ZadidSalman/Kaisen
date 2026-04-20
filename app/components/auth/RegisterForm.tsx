@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Smile } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
+import { setAccessToken } from '@/lib/auth-client'
 
 export function RegisterForm() {
   const [username, setUsername] = useState('')
@@ -13,8 +14,30 @@ export function RegisterForm() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [anilistLoading, setAnilistLoading] = useState(false)
   const router = useRouter()
-  const { setUser } = useAuth()
+  const { setUser, refreshUser } = useAuth()
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        const token = event.data.accessToken
+        if (token) {
+          setAccessToken(token)
+          refreshUser().then(() => {
+            toast.success('Account created via AniList!')
+            router.push('/')
+          })
+        }
+        setAnilistLoading(false)
+      } else if (event.data?.type === 'OAUTH_AUTH_ERROR') {
+        toast.error(`Registration failed: ${event.data.error}`)
+        setAnilistLoading(false)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [router, refreshUser])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,6 +61,22 @@ export function RegisterForm() {
     }
   }
 
+  const handleAniListLogin = async () => {
+    setAnilistLoading(true)
+    try {
+      const res = await fetch('/api/auth/anilist/url')
+      const data = await res.json()
+      if (data.success) {
+        window.open(data.url, 'anilist_auth', 'width=600,height=700')
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start AniList registration')
+      setAnilistLoading(false)
+    }
+  }
+
   return (
     <div className="w-full max-w-sm bg-bg-surface rounded-[24px] border border-border-subtle p-6 shadow-modal">
       <h2 className="text-2xl font-display font-bold text-ktext-primary mb-1">Join the Tide</h2>
@@ -45,7 +84,7 @@ export function RegisterForm() {
         Create your account to start rating themes.
       </p>
       
-      <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+      <form onSubmit={handleSubmit} className="space-y-4 mb-4">
         <div className="flex items-center gap-3 h-12 bg-bg-elevated rounded-[12px] px-4
                         border border-border-default focus-within:border-border-accent transition-all">
           <User className="w-4 h-4 text-ktext-tertiary flex-shrink-0" />
@@ -110,7 +149,7 @@ export function RegisterForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || anilistLoading}
           className="w-full h-12 bg-accent text-white rounded-full font-body font-semibold
                      flex items-center justify-center gap-2 interactive hover:bg-accent-hover transition-all
                      disabled:opacity-50 disabled:cursor-not-allowed"
@@ -122,6 +161,30 @@ export function RegisterForm() {
           )}
         </button>
       </form>
+
+      <div className="relative flex items-center justify-center py-2 mb-4">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border-subtle" />
+        </div>
+        <span className="relative px-3 bg-bg-surface text-[10px] uppercase tracking-widest text-ktext-tertiary">
+          or continue with
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleAniListLogin}
+        disabled={loading || anilistLoading}
+        className="w-full h-12 bg-[#3dbbee] text-white rounded-full font-body font-semibold
+                   flex items-center justify-center gap-2 interactive transition-all
+                   disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+      >
+        {anilistLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+          <>
+            <span className="font-bold">A</span> Register with AniList
+          </>
+        )}
+      </button>
 
       <p className="text-center text-sm font-body text-ktext-secondary mt-4">
         Already have an account?{' '}

@@ -97,4 +97,9 @@ export interface AuthUser {
   totalFollowers: number
   totalFollowing: number
   totalTime: number
+  anilist?: {
+    userId: number
+    username: string
+    accessToken?: string
+  }
 }

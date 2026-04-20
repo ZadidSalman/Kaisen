@@ -12,6 +12,12 @@ export interface IUser extends Document {
   totalFollowing: number
   totalTime: number
   isPublic: boolean
+  anilist?: {
+    accessToken: string
+    userId: number
+    username: string
+    syncedAt: Date
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -28,6 +34,12 @@ const UserSchema = new Schema<IUser>({
   totalFollowing: { type: Number, default: 0 },
   totalTime:      { type: Number, default: 0 },
   isPublic:       { type: Boolean, default: true },
+  anilist: {
+    accessToken: { type: String },
+    userId:      { type: Number },
+    username:    { type: String },
+    syncedAt:    { type: Date }
+  }
 }, { timestamps: true })
 
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
