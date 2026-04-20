@@ -26,29 +26,37 @@ export async function GET(req: NextRequest) {
     const refreshTokenCheck = req.cookies.get('refresh_token')?.value
     const payload = refreshTokenCheck ? verifyRefreshToken(refreshTokenCheck) : null
 
-    const redirectUri = process.env.ANILIST_REDIRECT_URI
-
-    if (!redirectUri) {
-      return handleResponse(false, 'Configuration Error: ANILIST_REDIRECT_URI is missing.')
-    }
-
     const clientId = (process.env.ANILIST_CLIENT_ID || '').trim()
     const clientSecret = (process.env.ANILIST_CLIENT_SECRET || '').trim()
+    const redirectUri = (process.env.ANILIST_REDIRECT_URI || '').trim()
 
-    // Exchange code for token using URLSearchParams (form-urlencoded)
+    if (!clientId || !clientSecret || !redirectUri) {
+      return handleResponse(false, 'Missing configuration: ID, Secret, or Redirect URI is not set in Vercel.')
+    }
+
+    // Exchange code for token
+    // Reverting to application/x-www-form-urlencoded as it is the official OAuth2 standard
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      code,
+    })
+
+    console.log('[AniList Debug] Attempting token exchange with (URLEncoded):', {
+      clientId,
+      redirectUri,
+      hasCode: !!code
+    })
+
     const tokenRes = await fetch('https://anilist.co/api/v2/oauth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        code,
-      }).toString(),
+      body: tokenParams.toString(),
     })
 
     const tokenData = await tokenRes.json()

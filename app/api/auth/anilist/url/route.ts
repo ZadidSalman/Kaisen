@@ -5,19 +5,12 @@ export async function GET(req: NextRequest) {
   try {
     const clientId = (process.env.ANILIST_CLIENT_ID || '').trim()
     const clientSecret = (process.env.ANILIST_CLIENT_SECRET || '').trim()
+    const redirectUri = (process.env.ANILIST_REDIRECT_URI || '').trim()
 
-    if (!clientId || !clientSecret) {
+    if (!clientId || !clientSecret || !redirectUri) {
       return NextResponse.json({ 
         success: false, 
-        error: `Configuration Error: ${!clientId ? 'ANILIST_CLIENT_ID' : 'ANILIST_CLIENT_SECRET'} is missing in Vercel. Have you redeployed?` 
-      }, { status: 500 })
-    }
-
-    const redirectUri = process.env.ANILIST_REDIRECT_URI
-    if (!redirectUri) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Configuration Error: ANILIST_REDIRECT_URI is missing.' 
+        error: `Configuration Error: ${!clientId ? 'ANILIST_CLIENT_ID' : !clientSecret ? 'ANILIST_CLIENT_SECRET' : 'ANILIST_REDIRECT_URI'} is missing in Vercel.` 
       }, { status: 500 })
     }
 
