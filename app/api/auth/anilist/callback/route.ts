@@ -17,31 +17,29 @@ export async function GET(req: NextRequest) {
     const refreshTokenCheck = req.cookies.get('refresh_token')?.value
     const payload = refreshTokenCheck ? verifyRefreshToken(refreshTokenCheck) : null
 
-    const host = req.headers.get('host')
-    const protocol = req.headers.get('x-forwarded-proto') || 'https'
-    
-    // Must match the URL generation logic exactly
-    const baseUrl = host ? `${protocol}://${host}` : (process.env.APP_URL || '')
-    const appUrl = baseUrl.replace(/\/$/, '')
-    const redirectUri = `${appUrl}/api/auth/anilist/callback`
+    const redirectUri = process.env.ANILIST_REDIRECT_URI
+
+    if (!redirectUri) {
+      return handleResponse(false, 'Configuration Error: ANILIST_REDIRECT_URI is missing.')
+    }
 
     const clientId = (process.env.ANILIST_CLIENT_ID || '').trim()
     const clientSecret = (process.env.ANILIST_CLIENT_SECRET || '').trim()
 
-    // Exchange code for token
+    // Exchange code for token using URLSearchParams (form-urlencoded)
     const tokenRes = await fetch('https://anilist.co/api/v2/oauth/token', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: parseInt(clientId, 10), // Explicitly cast to integer for AniList
+        client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
         code,
-      }),
+      }).toString(),
     })
 
     const tokenData = await tokenRes.json()

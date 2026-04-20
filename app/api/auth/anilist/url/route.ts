@@ -13,13 +13,13 @@ export async function GET(req: NextRequest) {
       }, { status: 500 })
     }
 
-    const host = req.headers.get('host')
-    const protocol = req.headers.get('x-forwarded-proto') || 'https'
-    
-    // Prioritize the actual current host to prevent cross-environment redirects (like Vercel -> AI Studio)
-    const baseUrl = host ? `${protocol}://${host}` : (process.env.APP_URL || '')
-    const appUrl = baseUrl.replace(/\/$/, '')
-    const redirectUri = `${appUrl}/api/auth/anilist/callback`
+    const redirectUri = process.env.ANILIST_REDIRECT_URI
+    if (!redirectUri) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Configuration Error: ANILIST_REDIRECT_URI is missing.' 
+      }, { status: 500 })
+    }
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       response_type: 'code',
     })
 
-    const authUrl = `https://anilist.co/api/v2/oauth/authorize?${params}`
+    const authUrl = `https://anilist.co/api/v2/oauth/authorize?${params.toString()}`
 
     return NextResponse.json({ success: true, url: authUrl })
   } catch (err) {
