@@ -144,7 +144,7 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
 
         <div className="flex gap-2">
           {[
-            { value: theme.avgRating.toFixed(1), label: 'AVG RATING', color: getScoreColor(Math.round(theme.avgRating)) },
+            { value: theme.avgRating?.toFixed(1) ?? '—', label: 'AVG RATING', color: getScoreColor(Math.round(theme.avgRating || 0)) },
             { value: formatCount(theme.totalRatings), label: 'RATINGS' },
             { value: formatCount(theme.totalWatches), label: 'WATCHES' },
             { value: formatCount(theme.totalListens || 0), label: 'LISTENS' },
