@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
     const appUrl = baseUrl.replace(/\/$/, '')
     const redirectUri = `${appUrl}/api/auth/anilist/callback`
 
+    const clientId = (process.env.ANILIST_CLIENT_ID || '').trim()
+    const clientSecret = (process.env.ANILIST_CLIENT_SECRET || '').trim()
+
     // Exchange code for token
     const tokenRes = await fetch('https://anilist.co/api/v2/oauth/token', {
       method: 'POST',
@@ -32,8 +35,8 @@ export async function GET(req: NextRequest) {
       },
       body: JSON.stringify({
         grant_type: 'authorization_code',
-        client_id: process.env.ANILIST_CLIENT_ID,
-        client_secret: process.env.ANILIST_CLIENT_SECRET,
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: redirectUri,
         code,
       }),
