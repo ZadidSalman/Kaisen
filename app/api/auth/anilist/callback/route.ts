@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
 
     const host = req.headers.get('host')
     const protocol = req.headers.get('x-forwarded-proto') || 'https'
-    const baseUrl = process.env.APP_URL || `${protocol}://${host}`
+    
+    // Must match the URL generation logic exactly
+    const baseUrl = host ? `${protocol}://${host}` : (process.env.APP_URL || '')
     const appUrl = baseUrl.replace(/\/$/, '')
     const redirectUri = `${appUrl}/api/auth/anilist/callback`
 
