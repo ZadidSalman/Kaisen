@@ -12,11 +12,29 @@ export default async function ArtistDetailPage({ params }: { params: Promise<{ s
   const { slug } = await params
   await connectDB()
 
-  const artist = await ArtistCache.findOne({ slug }).lean()
-  if (!artist) notFound()
+  // Fetch both in parallel — ArtistCache may not exist if only ThemeCache was seeded
+  const [artistFromCache, themes] = await Promise.all([
+    ArtistCache.findOne({ slug }).lean(),
+    ThemeCache.find({ artistSlugs: slug }).lean(),
+  ])
 
-  // Find all themes where this artist is participating
-  const themes = await ThemeCache.find({ artistSlugs: slug }).lean()
+  // If there are no themes referencing this slug either, it truly doesn't exist
+  if (!artistFromCache && themes.length === 0) notFound()
+
+  // If ArtistCache is missing, synthesize a compatible shape from the first ThemeCache document.
+  // ThemeCache stores artist names in allArtists[] and slugs in artistSlugs[] — we can match by index.
+  const artist = artistFromCache ?? (() => {
+    const t = themes[0]
+    const slugIndex = t.artistSlugs.indexOf(slug)
+    const name = slugIndex !== -1 ? t.allArtists[slugIndex] : (t.artistName ?? slug)
+    return {
+      slug,
+      name,
+      aliases:   [] as string[],
+      imageUrl:  null as string | null,
+      totalThemes: themes.length,
+    }
+  })()
 
   // Convert to plain objects for client components
   const serializedArtist = JSON.parse(JSON.stringify(artist))

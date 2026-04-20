@@ -16,10 +16,39 @@ export default async function AnimeDetailPage({ params }: { params: Promise<{ id
   const animeId = parseInt(id)
   if (isNaN(animeId)) notFound()
 
-  const anime = await AnimeCache.findOne({ anilistId: animeId }).lean()
-  if (!anime) notFound()
+  // Fetch both in parallel — AnimeCache may not exist if only ThemeCache was seeded
+  const [animeFromCache, themes] = await Promise.all([
+    AnimeCache.findOne({ anilistId: animeId }).lean(),
+    ThemeCache.find({ anilistId: animeId }).lean(),
+  ])
 
-  const themes = await ThemeCache.find({ anilistId: animeId }).lean()
+  // If there are no themes for this ID either, it truly doesn't exist
+  if (!animeFromCache && themes.length === 0) notFound()
+
+  // If AnimeCache is missing, synthesize a compatible shape from the first ThemeCache document.
+  // ThemeCache already stores all the metadata we need to render the page.
+  const anime = animeFromCache ?? (() => {
+    const t = themes[0]
+    return {
+      anilistId:       animeId,
+      titleRomaji:     t.animeTitle,
+      titleEnglish:    t.animeTitleEnglish ?? null,
+      titleNative:     null,
+      season:          t.animeSeason ?? null,
+      seasonYear:      t.animeSeasonYear ?? null,
+      genres:          [],
+      coverImageLarge: t.animeCoverImage ?? null,
+      coverImageMedium:t.animeCoverImageSmall ?? null,
+      bannerImage:     null,
+      atCoverImage:    t.animeCoverImage ?? null,
+      atGrillImage:    t.animeGrillImage ?? null,
+      studios:         t.animeStudios ?? [],
+      series:          t.animeSeries ?? [],
+      averageScore:    null,
+      totalEpisodes:   null,
+      status:          null,
+    }
+  })()
 
   // Convert to plain objects for client components
   const serializedAnime = JSON.parse(JSON.stringify(anime))
