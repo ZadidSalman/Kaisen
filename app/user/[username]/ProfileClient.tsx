@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { Pencil, MessageCircle, MoreVertical, History, Activity as ActivityIcon, Users, Star, Clock, Heart } from 'lucide-react'
+import { Pencil, History, Activity as ActivityIcon, Star, Clock, Heart, Users, UserPlus } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCount, getScoreColor, formatDuration, getFallbackAvatar } from '@/lib/utils'
@@ -10,7 +10,7 @@ import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-type Tab = 'activity' | 'history' | 'friends' | 'ratings'
+type Tab = 'activity' | 'history' | 'ratings'
 
 export function ProfileClient({ initialData }: { initialData: any }) {
   const { user: currentUser } = useAuth()
@@ -18,14 +18,25 @@ export function ProfileClient({ initialData }: { initialData: any }) {
   const isOwn = currentUser?.username === initialData.username
   
   const initialTab = (searchParams.get('tab') as Tab) || 'activity'
-  const [activeTab, setActiveTab] = useState<Tab>(['activity', 'history', 'friends', 'ratings'].includes(initialTab) ? initialTab : 'activity')
+  const [activeTab, setActiveTab] = useState<Tab>(['activity', 'history', 'ratings'].includes(initialTab) ? initialTab : 'activity')
   const [data, setData] = useState<any>({
     activity: [],
     history: [],
-    friends: { followers: [], following: [] },
     ratings: []
   })
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalFollowers: initialData.totalFollowers,
+    totalFollowing: initialData.totalFollowing
+  })
+
+  // Sync stats when initialData changes (e.g. navigation between profiles)
+  useEffect(() => {
+    setStats({
+      totalFollowers: initialData.totalFollowers,
+      totalFollowing: initialData.totalFollowing
+    })
+  }, [initialData.username, initialData.totalFollowers, initialData.totalFollowing])
 
   const profileFallback = getFallbackAvatar(initialData.username)
 
@@ -37,7 +48,6 @@ export function ProfileClient({ initialData }: { initialData: any }) {
         if (activeTab === 'activity') endpoint = `/api/users/${initialData.username}/activity`
         else if (activeTab === 'history') endpoint = `/api/users/${initialData.username}/history`
         else if (activeTab === 'ratings') endpoint = `/api/users/${initialData.username}/ratings`
-        else if (activeTab === 'friends') endpoint = `/api/users/${initialData.username}/friends`
         
         if (endpoint) {
           const res = await fetch(endpoint)
@@ -54,7 +64,6 @@ export function ProfileClient({ initialData }: { initialData: any }) {
     }
     fetchTabData()
   }, [activeTab, initialData.username])
-
   const formatTimeSpent = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`
     const hours = Math.floor(seconds / 3600)
@@ -67,8 +76,26 @@ export function ProfileClient({ initialData }: { initialData: any }) {
     { id: 'activity', label: 'Activity', icon: ActivityIcon },
     { id: 'history', label: 'History', icon: History },
     { id: 'ratings', label: 'Ratings', icon: Star },
-    { id: 'friends', label: 'Friends', icon: Users },
   ]
+
+  useEffect(() => {
+    // Initial fetch to ensure stats are perfectly synced on load
+    async function fetchStats() {
+      try {
+        const res = await fetch(`/api/users/${initialData.username}/stats`)
+        const json = await res.json()
+        if (json.success) {
+          setStats({
+            totalFollowers: json.data.totalFollowers,
+            totalFollowing: json.data.totalFollowing
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch fresh stats:', err)
+      }
+    }
+    fetchStats()
+  }, [initialData.username])
 
   return (
     <div className="pb-20">
@@ -105,20 +132,32 @@ export function ProfileClient({ initialData }: { initialData: any }) {
             Edit Profile
           </button>
         ) : (
-          <div className="flex gap-3 w-full max-w-sm px-4 justify-center">
-            <FollowButton username={initialData.username} label="Follow User" />
+          <div className="flex gap-3 w-full px-4 justify-center">
+            <FollowButton 
+              username={initialData.username} 
+              label="Follow User" 
+              onToggle={(isFollowing) => {
+                setStats(prev => ({
+                  ...prev,
+                  totalFollowers: prev.totalFollowers + (isFollowing ? 1 : -1)
+                }))
+              }}
+            />
           </div>
         )}
 
-        <div className="flex gap-3 w-full max-w-sm pt-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full max-w-lg pt-4 px-3 sm:px-4">
           {[
-            { label: 'LISTEN TIME', value: formatTimeSpent(initialData.totalTime || 0) },
-            { label: 'FOLLOWERS', value: formatCount(initialData.totalFollowers) },
-            { label: 'FOLLOWING', value: formatCount(initialData.totalFollowing) },
+            { label: 'LISTEN TIME', value: formatTimeSpent(initialData.totalTime || 0), icon: Clock },
+            { label: 'FOLLOWERS', value: formatCount(stats.totalFollowers), icon: Users },
+            { label: 'FOLLOWING', value: formatCount(stats.totalFollowing), icon: UserPlus },
           ].map(stat => (
-            <div key={stat.label} className="flex-1 bg-bg-surface border border-border-subtle rounded-[20px] p-3 text-center shadow-sm">
-              <p className="text-xl font-display font-bold text-accent">{stat.value}</p>
-              <p className="text-[10px] font-body text-ktext-tertiary tracking-widest font-black">{stat.label}</p>
+            <div key={stat.label} className="bg-bg-surface border border-border-subtle rounded-[16px] sm:rounded-[20px] p-2 sm:p-3 text-center shadow-sm flex flex-col justify-center min-w-0">
+              <div className="flex items-center justify-center gap-1 mb-1 text-ktext-tertiary">
+                <stat.icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
+                <p className="text-[8px] sm:text-[10px] font-body tracking-wider sm:tracking-widest font-black uppercase truncate">{stat.label}</p>
+              </div>
+              <p className="text-lg sm:text-xl font-display font-bold text-accent truncate">{stat.value}</p>
             </div>
           ))}
         </div>
@@ -126,7 +165,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
 
       {/* Tabs */}
       <div className="mt-8">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide border-b border-border-subtle mb-6">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide border-b border-border-subtle mb-6 -mx-4 px-4 md:mx-0 md:px-0">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -196,38 +235,6 @@ export function ProfileClient({ initialData }: { initialData: any }) {
                   )}
                 </div>
               )}
-
-              {activeTab === 'friends' && (
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="text-sm font-display font-bold text-ktext-secondary mb-4 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-accent-mint" />
-                      Following ({data.friends.following?.length || 0})
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {data.friends.following?.length > 0 ? (
-                        data.friends.following.map((u: any) => <UserCard key={u.username} user={u} />)
-                      ) : (
-                        <p className="text-sm font-body text-ktext-tertiary italic px-4">Not following anyone yet.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-display font-bold text-ktext-secondary mb-4 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-ktext-disabled" />
-                      Followers ({data.friends.followers?.length || 0})
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {data.friends.followers?.length > 0 ? (
-                        data.friends.followers.map((u: any) => <UserCard key={u.username} user={u} />)
-                      ) : (
-                        <p className="text-sm font-body text-ktext-tertiary italic px-4">No followers yet.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -273,28 +280,6 @@ function ActivityCard({ item }: { item: any }) {
             </Link>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function UserCard({ user }: { user: any }) {
-  return (
-    <div className="flex items-center gap-3 p-3 bg-bg-surface border border-border-subtle rounded-2xl">
-      <Link href={`/user/${user.username}`} className="w-12 h-12 rounded-full overflow-hidden relative border border-border-subtle flex-shrink-0 interactive">
-        <Image 
-          src={user.avatarUrl ?? getFallbackAvatar(user.username)} 
-          fill 
-          unoptimized
-          className="object-cover" 
-          alt={user.displayName} 
-        />
-      </Link>
-      <div className="min-w-0 flex-1">
-        <Link href={`/user/${user.username}`} className="hover:text-accent transition-colors">
-          <p className="text-sm font-display font-bold text-ktext-primary truncate">{user.displayName}</p>
-          <p className="text-xs font-body text-ktext-tertiary truncate">@{user.username}</p>
-        </Link>
       </div>
     </div>
   )

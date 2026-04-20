@@ -362,11 +362,9 @@ const NotificationSchema = new Schema({
   type: {
     type: String,
     enum: [
-      'friend_request',
-      'friend_accepted',
-      'friend_rated',
-      'friend_favorited',
       'follow',
+      'theme_rated',
+      'theme_favorited',
     ],
     required: true,
   },
@@ -406,3 +404,15 @@ QuizAttemptSchema.index({ themeSlug: 1 })
 QuizAttemptSchema.index({ score: -1 })
 
 export const QuizAttempt = mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', QuizAttemptSchema)
+
+const CommentSchema = new Schema({
+  userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  themeId:   { type: Schema.Types.ObjectId, ref: 'ThemeCache', required: true },
+  themeSlug: { type: String, required: true },
+  content:   { type: String, required: true, maxlength: 1000 },
+}, { timestamps: true })
+
+CommentSchema.index({ themeId: 1, createdAt: -1 })
+CommentSchema.index({ userId: 1 })
+
+export const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema)

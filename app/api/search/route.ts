@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const qLower = q.toLowerCase()
 
     // ── User Search ──────────────────────────
-    // Search for users to allow adding friends
+    // Search for users to allow following others
     let users = []
     if (page === 1 && !type) {
        users = await User.find({

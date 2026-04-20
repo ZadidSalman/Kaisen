@@ -15,7 +15,7 @@ export function NavigationRail({ className }: { className?: string }) {
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
     { path: '/library', icon: Library, label: 'Library' },
-    { path: user ? `/user/${user.username}?tab=friends` : '/login', icon: Users, label: 'Network' },
+    { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/notifications', icon: Bell, label: 'Notifications' },
     { path: user ? `/user/${user.username}` : '/login', icon: User, label: 'Profile' },
   ]
@@ -33,7 +33,7 @@ export function NavigationRail({ className }: { className?: string }) {
       
       <div className="space-y-2">
         {navItems.map(item => {
-          const isActive = pathname === item.path || (item.label === 'Network' && pathname.includes('/user/') && typeof window !== 'undefined' && window.location.search.includes('friends'))
+          const isActive = pathname === item.path || (item.label === 'Network' && pathname.includes('/network'))
           return (
             <Link key={item.label} href={item.path} className={`
               flex items-center gap-3 mx-2 px-3 py-3 rounded-full

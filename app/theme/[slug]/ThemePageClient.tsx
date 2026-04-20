@@ -6,6 +6,7 @@ import { IThemeCache, IThemeEntry } from '@/types/app.types'
 import { VideoPlayer } from '@/app/components/theme/VideoPlayer'
 import { WatchListenToggle } from '@/app/components/theme/WatchListenToggle'
 import { RatingWidget } from '@/app/components/theme/RatingWidget'
+import { CommentSection } from '@/app/components/theme/CommentSection'
 import { VersionSwitcher } from '@/app/components/theme/VersionSwitcher'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { getScoreColor, formatCount, getFallbackImage } from '@/lib/utils'
@@ -162,6 +163,8 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
         <div className="bg-bg-surface rounded-[20px] border border-border-subtle p-4 shadow-card">
           <RatingWidget userRating={userRating} onRate={handleRate} />
         </div>
+
+        <CommentSection themeSlug={theme.slug} />
 
         {similarThemes.length > 0 && (
           <div className="pt-8">

@@ -5,6 +5,7 @@ import { Search, X, Sparkles, Music, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
+import { UserCard } from '@/app/components/shared/UserCard'
 
 export function SearchClient() {
   const [query, setQuery] = useState('')
@@ -98,28 +99,10 @@ export function SearchClient() {
 
       {users.length > 0 && activeFilter === 'ALL' && (
         <div className="mb-6">
-          <h3 className="text-sm font-display font-secondary font-bold text-ktext-secondary px-2 mb-3">People</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <h3 className="text-sm font-display font-bold text-ktext-secondary px-2 mb-3 tracking-tight">People</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {users.map((user: any) => (
-              <Link 
-                href={`/user/${user.username}`} 
-                key={user.username}
-                className="flex items-center gap-3 p-3 bg-bg-surface border border-border-subtle rounded-[16px] interactive"
-              >
-                <div className="w-10 h-10 rounded-full bg-bg-elevated overflow-hidden border border-border-subtle relative flex-shrink-0">
-                  {user.avatarUrl ? (
-                     <Image src={user.avatarUrl} alt={user.displayName} fill className="object-cover" unoptimized referrerPolicy="no-referrer" />
-                  ) : (
-                     <div className="w-full h-full flex items-center justify-center text-xs font-bold text-ktext-tertiary">
-                        {user.displayName.charAt(0).toUpperCase()}
-                     </div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-display font-bold text-ktext-primary truncate">{user.displayName}</p>
-                  <p className="text-[10px] font-body text-ktext-tertiary truncate">@{user.username}</p>
-                </div>
-              </Link>
+              <UserCard key={user.username} user={user} />
             ))}
           </div>
         </div>

@@ -26,7 +26,7 @@ export function AppHeader() {
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
     { path: '/library', icon: Library, label: 'Library' },
-    { path: user ? `/user/${user.username}?tab=friends` : '/login', icon: Users, label: 'Network' },
+    { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/notifications', icon: Bell, label: 'Notifications' },
     { path: user ? `/user/${user.username}` : '/login', icon: UserIcon, label: 'Profile' },
     { path: '/settings', icon: Settings, label: 'Settings' },
@@ -125,7 +125,7 @@ export function AppHeader() {
 
               <div className="flex-1 overflow-y-auto py-4 space-y-1 px-3">
                 {navItems.map(item => {
-                  const isActive = pathname === item.path || (item.label === 'Network' && pathname.includes('/user/') && typeof window !== 'undefined' && window.location.search.includes('friends'))
+                  const isActive = pathname === item.path || (item.label === 'Network' && pathname.includes('/network'))
                   return (
                     <Link 
                       key={item.label} 

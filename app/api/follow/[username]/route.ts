@@ -45,11 +45,11 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Cannot follow yourself' }, { status: 400 })
     }
 
-    await Follow.findOneAndUpdate(
-      { followerId: payload.userId, followeeId: targetUser._id },
-      { followerId: payload.userId, followeeId: targetUser._id },
-      { upsert: true }
-    )
+    const existingFollow = await Follow.findOne({ followerId: payload.userId, followeeId: targetUser._id })
+    if (!existingFollow) {
+      const follow = new Follow({ followerId: payload.userId, followeeId: targetUser._id })
+      await follow.save()
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
