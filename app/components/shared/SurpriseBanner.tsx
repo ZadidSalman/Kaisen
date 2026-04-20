@@ -43,8 +43,11 @@ export function SurpriseBanner() {
               key={i} 
               className="w-16 h-24 sm:w-20 sm:h-28 rounded-md bg-bg-elevated relative overflow-hidden shadow-xl"
               style={{ 
-                transform: `rotate(${i % 3 === 0 ? '-8deg' : i % 3 === 1 ? '4deg' : '10deg'}) translateY(${Math.sin(i) * 10}px)`,
-                margin: '2px'
+                transform: `rotate(${i % 3 === 0 ? '-8deg' : i % 3 === 1 ? '4deg' : '10deg'}) translateY(${(Math.sin(i) * 10).toFixed(2)}px)`,
+                marginTop: '2px',
+                marginRight: '2px',
+                marginBottom: '2px',
+                marginLeft: '2px'
               }}
             >
               <Image 
