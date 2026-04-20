@@ -15,7 +15,7 @@ export function LibraryClient() {
   const { data, isLoading, refetch, error } = useQuery({
     queryKey: ['themes', 'library'],
     queryFn: fetchLibraryThemes,
-    enabled: !!user?.anilist?.accessToken,
+    enabled: !!user?.anilist?.userId,
   })
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function LibraryClient() {
     )
   }
 
-  if (!user.anilist?.accessToken) {
+  if (!user.anilist?.userId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
         <div className="w-20 h-20 bg-bg-elevated rounded-full flex items-center justify-center mb-6">

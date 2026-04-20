@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         totalRatings: user.totalRatings,
         totalFollowers: user.totalFollowers,
         totalFollowing: user.totalFollowing,
-        anilist: user.anilist ? {
+        anilist: (user.anilist && user.anilist.userId) ? {
           userId: user.anilist.userId,
           username: user.anilist.username,
         } : null,
@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest) {
         totalRatings: user.totalRatings,
         totalFollowers: user.totalFollowers,
         totalFollowing: user.totalFollowing,
-        anilist: user.anilist ? {
+        anilist: (user.anilist && user.anilist.userId) ? {
           userId: user.anilist.userId,
           username: user.anilist.username,
         } : null,
