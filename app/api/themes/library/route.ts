@@ -16,33 +16,46 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'AniList not connected' }, { status: 400 })
     }
 
-    // Fetch completed media IDs from AniList
-    const anilistRes = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${user.anilist.accessToken}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `
-          query ($userId: Int) {
-            MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
-              lists {
-                entries {
-                  mediaId
+    let mediaIds = user.anilist.completedMediaIds || []
+    const sixHours = 1000 * 60 * 60 * 6
+    const isStale = !user.anilist.syncedAt || (new Date().getTime() - new Date(user.anilist.syncedAt).getTime() > sixHours)
+
+    if (mediaIds.length === 0 || isStale) {
+      // Fetch completed media IDs from AniList
+      const anilistRes = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.anilist.accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `
+            query ($userId: Int) {
+              MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
+                lists {
+                  entries {
+                    mediaId
+                  }
                 }
               }
             }
-          }
-        `,
-        variables: { userId: user.anilist.userId }
-      }),
-    })
+          `,
+          variables: { userId: user.anilist.userId }
+        }),
+      })
 
-    const anilistData = await anilistRes.json()
-    const entries = anilistData.data?.MediaListCollection?.lists?.flatMap((list: any) => list.entries) || []
-    const mediaIds = entries.map((e: any) => e.mediaId)
+      const anilistData = await anilistRes.json()
+      const entries = anilistData.data?.MediaListCollection?.lists?.flatMap((list: any) => list.entries) || []
+      mediaIds = entries.map((e: any) => e.mediaId)
+
+      if (mediaIds.length > 0) {
+        await User.findByIdAndUpdate(user._id, {
+          'anilist.completedMediaIds': mediaIds,
+          'anilist.syncedAt': new Date()
+        })
+      }
+    }
 
     if (mediaIds.length === 0) {
       return NextResponse.json({ success: true, data: [], meta: { total: 0 } })
@@ -51,6 +64,13 @@ export async function GET(req: NextRequest) {
     // Query themes from our DB that match these AniList IDs
     const themes = await ThemeCache.find({
       anilistId: { $in: mediaIds }
+    }, {
+      embedding: 0,
+      animeGrillImage: 0,
+      syncedAt: 0,
+      animeTitleAlternative: 0,
+      animeStudios: 0,
+      animeSeries: 0,
     })
     .sort({ animeSeasonYear: -1, animeTitle: 1 })
     .lean()

@@ -56,6 +56,21 @@ export function formatDuration(seconds: number): string {
   return `${m}m`
 }
 
+export function getAnimeTitle(theme: Partial<any>): string {
+  if (!theme) return 'Unknown Anime'
+  return theme.animeTitleEnglish || theme.animeTitle || (theme.animeTitleAlternative?.[0]) || 'Unknown Anime'
+}
+
+export function getAnimeTitleFromCache(anime: Partial<any>): string {
+  if (!anime) return 'Unknown Anime'
+  return anime.titleEnglish || anime.titleRomaji || (anime.titleAlternative?.[0]) || 'Unknown Anime'
+}
+
+export function getSongTitle(theme: Partial<any>): string {
+  if (!theme) return 'Unknown Song'
+  return theme.songTitle || 'Unknown Song'
+}
+
 const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1578632292335-df3abbb0d586?auto=format&fit=crop&q=80&w=800', // Neon City
   'https://images.unsplash.com/photo-1541562232579-512a21360020?auto=format&fit=crop&q=80&w=800', // Torii Gate

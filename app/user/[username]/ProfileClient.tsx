@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Pencil, History, Activity as ActivityIcon, Star, Clock, Heart, Users, UserPlus } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useAuth } from '@/hooks/useAuth'
-import { formatCount, getScoreColor, formatDuration, getFallbackAvatar } from '@/lib/utils'
+import { formatCount, getScoreColor, formatDuration, getFallbackAvatar, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { FollowButton } from '@/app/components/shared/FollowButton'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import Link from 'next/link'
@@ -245,6 +245,8 @@ export function ProfileClient({ initialData }: { initialData: any }) {
 
 function ActivityCard({ item }: { item: any }) {
   const isRating = item.activityType === 'rating'
+  const songDisplayTitle = getSongTitle(item.themeId)
+  const animeDisplayTitle = getAnimeTitle(item.themeId)
   
   return (
     <div className="bg-bg-surface border border-border-subtle rounded-[24px] p-4 shadow-sm hover:shadow-card-hover transition-all group">
@@ -260,7 +262,7 @@ function ActivityCard({ item }: { item: any }) {
                 {isRating ? 'Rated a theme' : item.mode === 'listen' ? 'Listened to a theme' : 'Watched a theme'}
               </p>
               <Link href={`/theme/${item.themeSlug}`} className="text-base font-display font-bold text-ktext-primary hover:text-accent transition-colors truncate block">
-                {item.themeId?.songTitle || 'Unknown Track'}
+                {songDisplayTitle}
               </Link>
             </div>
             {isRating && (
@@ -276,7 +278,7 @@ function ActivityCard({ item }: { item: any }) {
             </span>
             <span className="w-1 h-1 rounded-full bg-border-strong" />
             <Link href={`/anime/${item.themeId?.anilistId}`} className="text-xs font-body text-ktext-tertiary hover:underline">
-              {item.themeId?.animeTitle}
+              {animeDisplayTitle}
             </Link>
           </div>
         </div>

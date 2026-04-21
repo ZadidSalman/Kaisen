@@ -17,6 +17,7 @@ export interface IUser extends Document {
     userId: number
     username: string
     syncedAt: Date
+    completedMediaIds?: number[]
   }
   createdAt: Date
   updatedAt: Date
@@ -38,7 +39,8 @@ const UserSchema = new Schema<IUser>({
     accessToken: { type: String },
     userId:      { type: Number },
     username:    { type: String },
-    syncedAt:    { type: Date }
+    syncedAt:    { type: Date },
+    completedMediaIds: [{ type: Number }]
   }
 }, { timestamps: true })
 
@@ -169,12 +171,12 @@ ThemeCacheSchema.index({
   animeTitleAlternative:  'text',
 }, {
   weights: {
-    songTitle:             10,
-    artistName:            9,
-    allArtists:            8,
-    animeTitle:            6,
-    animeTitleEnglish:     5,
-    animeTitleAlternative: 3,
+    animeTitle:            10,
+    animeTitleEnglish:     10,
+    songTitle:             8,
+    artistName:            7,
+    allArtists:            6,
+    animeTitleAlternative: 4,
   },
   name: 'theme_full_search',
 })

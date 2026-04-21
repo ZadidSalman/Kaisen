@@ -7,9 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function LibraryPage() {
-  return (
-    <main className="container mx-auto px-4 lg:px-8">
-      <LibraryClient />
-    </main>
-  )
+  return <LibraryClient />
 }

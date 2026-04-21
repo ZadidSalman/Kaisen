@@ -9,9 +9,10 @@ import { RatingWidget } from '@/app/components/theme/RatingWidget'
 import { CommentSection } from '@/app/components/theme/CommentSection'
 import { VersionSwitcher } from '@/app/components/theme/VersionSwitcher'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
-import { getScoreColor, formatCount, getFallbackImage } from '@/lib/utils'
+import { getScoreColor, formatCount, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { authFetch } from '@/lib/auth-client'
-import { Star, Eye, Headphones } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
+import { Star, Eye, Headphones, Download, Loader2, Share2, Info } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
@@ -19,10 +20,13 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
   const isAutoplay = searchParams.get('autoplay') === 'true'
 
   const [theme, setTheme] = useState(initialData)
+  const animeDisplayTitle = getAnimeTitle(theme)
+  const songDisplayTitle = getSongTitle(theme)
   const [mode, setMode] = useState<'watch' | 'listen'>('watch')
   const [selectedEntry, setSelectedEntry] = useState<IThemeEntry>(
     theme.entries.find(e => e.version === 'Standard') ?? theme.entries[0]
   )
+  const [downloading, setDownloading] = useState(false)
 
   const fallback = getFallbackImage(theme.slug)
 
@@ -77,6 +81,56 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
     }
   }
 
+  const handleDownload = async (format?: string) => {
+    const url = (mode === 'listen' && format !== 'mp4') ? selectedEntry.audioUrl : selectedEntry.videoSources[0]?.url
+    if (!url) return
+
+    setDownloading(true)
+    try {
+      const isAudio = mode === 'listen'
+      // If force format (like mp4 from video button) use it, otherwise detect
+      const targetFormat = format || (isAudio ? 'mp3' : 'mp4')
+      
+      const safeFilenameBase = `${animeDisplayTitle} - ${songDisplayTitle} (${theme.type}${theme.typeIndex || ''})`
+        .replace(/[<>:"/\\|?*]/g, '')
+      
+      const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(safeFilenameBase)}&format=${targetFormat}`
+      
+      if (targetFormat === 'mp3') {
+        toast.info('Converting to MP3... this can take 15-30s.', { duration: 5000 })
+      } else {
+        toast.info(`Fetching ${targetFormat.toUpperCase()} file...`)
+      }
+
+      const response = await fetch(downloadUrl)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Server rejected download')
+      }
+
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      
+      const link = document.createElement('a')
+      link.href = blobUrl
+      const finalFilename = `${safeFilenameBase}.${targetFormat}`
+      link.setAttribute('download', finalFilename)
+      document.body.appendChild(link)
+      link.click()
+      
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+      
+      toast.success(`${targetFormat.toUpperCase()} download ready!`)
+    } catch (err: any) {
+      console.error('Download error:', err)
+      toast.error(err.message || 'Download failed.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const handleWatched = useCallback(() => {
     setHasWatched(true)
     setTheme(prev => ({
@@ -101,38 +155,107 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
         />
       </div>
 
-      <div className="px-4 mt-4 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-display font-bold text-ktext-primary leading-tight">{theme.songTitle}</h1>
-              {hasWatched && (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-accent-mint/20 text-accent-mint rounded-full border border-accent-mint/30">
-                  <Eye className="w-3 h-3" />
-                  <span className="text-[10px] font-mono font-bold uppercase">Watched</span>
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1">
+      <div className="px-4 mt-6 space-y-8 max-w-2xl mx-auto">
+        {/* Aesthetic Header Section */}
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="space-y-1">
+            {hasWatched && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 bg-accent-mint/10 text-accent-mint rounded-full border border-accent-mint/20"
+              >
+                <Eye className="w-3 h-3" />
+                <span className="text-[10px] font-display font-bold uppercase tracking-wider">Previously Watched</span>
+              </motion.div>
+            )}
+            
+            <motion.h1 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl md:text-5xl font-display font-bold text-ktext-primary leading-tight tracking-tight px-4"
+            >
+              {songDisplayTitle}
+            </motion.h1>
+            
+            <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 mt-1 px-4">
               {theme.allArtists.map((name, i) => (
                 <Link 
                   key={theme.artistSlugs[i] || i} 
                   href={`/artist/${theme.artistSlugs[i]}`}
-                  className="text-sm font-body text-accent font-semibold hover:underline"
+                  className="text-lg font-body text-accent font-semibold hover:underline"
                 >
                   {name}{i < theme.allArtists.length - 1 ? ',' : ''}
                 </Link>
               ))}
               {theme.allArtists.length === 0 && theme.artistName && (
-                <p className="text-sm font-body text-accent font-semibold">{theme.artistName}</p>
+                <p className="text-lg font-body text-accent font-semibold">{theme.artistName}</p>
               )}
             </div>
-            <Link href={`/anime/${theme.anilistId}`} className="inline-block text-xs font-body text-ktext-tertiary mt-1.5 hover:text-accent transition-colors">
-              ∞ {theme.animeTitle}
+
+            <Link 
+              href={`/anime/${theme.anilistId}`} 
+              className="flex items-center justify-center gap-1.5 text-sm font-body text-ktext-tertiary mt-2 hover:text-accent transition-colors"
+            >
+              <div className="w-1.5 h-1.5 rounded-full border border-ktext-tertiary" />
+              {animeDisplayTitle}
             </Link>
           </div>
-          
-          <WatchListenToggle mode={mode} onModeChange={setMode} audioDisabled={!selectedEntry.audioUrl} />
+
+          <div className="flex flex-col items-center gap-4 w-full">
+            <WatchListenToggle mode={mode} onModeChange={setMode} audioDisabled={!selectedEntry.audioUrl} />
+            
+            <div className="flex flex-col items-center gap-2">
+              <AnimatePresence mode="wait">
+                {mode === 'listen' && selectedEntry.audioUrl && (
+                  <motion.button 
+                    key="dl-mp3"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    onClick={() => handleDownload('mp3')}
+                    disabled={downloading}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-white text-xs font-bold uppercase tracking-widest interactive disabled:opacity-50 shadow-md group"
+                  >
+                    {downloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                    )}
+                    <span>Download MP3</span>
+                  </motion.button>
+                )}
+
+                {mode === 'watch' && selectedEntry.videoSources.length > 0 && (
+                  <motion.button 
+                    key="dl-video"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    onClick={() => handleDownload('mp4')}
+                    disabled={downloading}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-bg-elevated border border-border-subtle text-ktext-primary text-xs font-bold uppercase tracking-widest interactive hover:border-accent disabled:opacity-50 group"
+                  >
+                    {downloading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                    )}
+                    <span>Download Video</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-[10px] font-body text-ktext-tertiary italic text-center px-8 opacity-70"
+              >
+                Buffering a lot? Download it for a smoother experience.
+              </motion.p>
+            </div>
+          </div>
         </div>
 
         {theme.entries.length > 1 && (

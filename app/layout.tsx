@@ -27,6 +27,8 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
+import { AppShell } from '@/app/components/layout/AppShell'
+
 export const metadata: Metadata = {
   title: 'Kaikansen',
   description: 'Anime OP/ED rating, discovery, and social platform.',
@@ -43,7 +45,9 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
-              {children}
+              <AppShell>
+                {children}
+              </AppShell>
               <Toaster position="top-center" richColors />
             </AuthProvider>
           </QueryProvider>

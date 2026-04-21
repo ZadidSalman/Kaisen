@@ -20,6 +20,16 @@ export async function GET(req: NextRequest) {
     const [theme] = await ThemeCache.aggregate([
       { $match: filter },
       { $sample: { size: 1 } },
+      {
+        $project: {
+          embedding: 0,
+          animeGrillImage: 0,
+          syncedAt: 0,
+          animeTitleAlternative: 0,
+          animeStudios: 0,
+          animeSeries: 0,
+        }
+      }
     ])
 
     if (!theme) {

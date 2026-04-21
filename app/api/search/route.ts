@@ -51,11 +51,28 @@ export async function GET(req: NextRequest) {
 
     // ── LAYER 1: $text search (exact, fast, free) ──────────────────────────
     if (!isMoodQuery) {
-      const textFilter: any = { $text: { $search: q } }
+      // Improved: Use + prefix to force "AND" behavior for all words, ensuring 
+      // results contain every keyword. Also include the phrase in quotes 
+      // to prioritize exact name matches (e.g., "Tokyo Ghoul" over themes with 
+      // the words far apart).
+      const words = q.split(/\s+/).filter(w => w.length > 0)
+      const searchStr = words.length > 1 
+        ? `"${q}" ` + words.map(w => `+${w}`).join(' ') 
+        : q
+
+      const textFilter: any = { $text: { $search: searchStr } }
       if (type) textFilter.type = type.toUpperCase()
 
       const [textResults, textTotal] = await Promise.all([
         ThemeCache.find(textFilter, { score: { $meta: 'textScore' } })
+          .select({
+             embedding: 0,
+             animeGrillImage: 0,
+             syncedAt: 0,
+             animeTitleAlternative: 0,
+             animeStudios: 0,
+             animeSeries: 0,
+          })
           .sort({ score: { $meta: 'textScore' } })
           .skip(skip)
           .limit(limit)
@@ -137,6 +154,16 @@ export async function GET(req: NextRequest) {
       {
         $addFields: { vectorScore: { $meta: 'vectorSearchScore' } },
       },
+      {
+        $project: {
+          embedding: 0,
+          animeGrillImage: 0,
+          syncedAt: 0,
+          animeTitleAlternative: 0,
+          animeStudios: 0,
+          animeSeries: 0,
+        }
+      }
     ])
 
     return NextResponse.json({

@@ -19,8 +19,8 @@ export function HomeClient() {
   const { ref, inView } = useInView()
 
   const { data: seasonalData } = useQuery({
-    queryKey: queryKeys.themes.seasonal('SPRING', 2024), // Example current season
-    queryFn: () => fetchSeasonalThemes('SPRING', 2024),
+    queryKey: queryKeys.themes.seasonal('SPRING', 2026), // Updated to current season
+    queryFn: () => fetchSeasonalThemes('SPRING', 2026),
   })
 
   const {
@@ -51,15 +51,21 @@ export function HomeClient() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-xs font-body font-semibold text-accent uppercase tracking-wide">Current Season</p>
-            <h2 className="text-2xl font-display font-bold text-ktext-primary">Spring 2024</h2>
+            <h2 className="text-2xl font-display font-bold text-ktext-primary">Spring 2026</h2>
           </div>
-          <Link href="/season/spring/2024" className="text-sm font-body text-accent font-semibold interactive">
+          <Link href="/season/spring/2026" className="text-sm font-body text-accent font-semibold interactive">
             View All
           </Link>
         </div>
         <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2">
           {featuredThemes.length > 0 ? (
-            featuredThemes.map((theme: any) => <ThemeFeaturedCard key={theme.slug} {...theme} />)
+            featuredThemes.map((theme: any, idx: number) => (
+              <ThemeFeaturedCard 
+                key={theme.slug} 
+                theme={theme} 
+                priority={idx < 4} 
+              />
+            ))
           ) : (
             [...Array(3)].map((_, i) => (
               <div key={i} className="w-40 md:w-48 aspect-[10/14] rounded-[20px] bg-bg-elevated shimmer" />

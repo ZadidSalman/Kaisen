@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Star, Play, Eye } from 'lucide-react'
 import { IThemeCache } from '@/types/app.types'
-import { getScoreColor, getFallbackImage } from '@/lib/utils'
+import { getScoreColor, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 
 interface ThemeListRowProps extends Partial<IThemeCache> {
   friendUsername?: string
@@ -11,21 +11,22 @@ interface ThemeListRowProps extends Partial<IThemeCache> {
   isWatched?: boolean
 }
 
-export function ThemeListRow({
-  slug,
-  songTitle,
-  artistName,
-  animeTitle,
-  animeCoverImage,
-  type,
-  sequence,
-  avgRating,
-  totalRatings,
-  friendUsername,
-  friendScore,
-  isWatched,
-}: ThemeListRowProps) {
-  const fallback = getFallbackImage(slug || animeTitle || undefined)
+export function ThemeListRow(props: ThemeListRowProps) {
+  const {
+    slug,
+    artistName,
+    animeCoverImage,
+    type,
+    sequence,
+    avgRating,
+    totalRatings,
+    friendUsername,
+    friendScore,
+    isWatched,
+  } = props
+  const animeDisplayTitle = getAnimeTitle(props)
+  const songDisplayTitle = getSongTitle(props)
+  const fallback = getFallbackImage(slug || animeDisplayTitle || undefined)
 
   return (
     <Link href={`/theme/${slug}`} className="
@@ -44,7 +45,7 @@ export function ThemeListRow({
           src={animeCoverImage || fallback} 
           fill
           className="object-cover" 
-          alt={animeTitle ?? 'Anime cover'} 
+          alt={animeDisplayTitle ?? 'Anime cover'} 
           referrerPolicy="no-referrer"
         />
       </div>
@@ -60,9 +61,9 @@ export function ThemeListRow({
             {type}{sequence}
           </span>
         </div>
-        <p className="text-sm font-body font-semibold text-ktext-primary truncate">{songTitle}</p>
+        <p className="text-sm font-body font-semibold text-ktext-primary truncate">{songDisplayTitle}</p>
         <p className="text-xs font-body text-ktext-secondary truncate">
-          {artistName} · {animeTitle}
+          {artistName} · {animeDisplayTitle}
         </p>
         {friendUsername && (
           <p className="text-xs font-body text-accent truncate">
