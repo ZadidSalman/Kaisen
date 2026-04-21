@@ -23,7 +23,7 @@ export default async function ThemePage({ params }: { params: Promise<{ slug: st
   const serializedTheme = JSON.parse(JSON.stringify(theme))
 
   return (
-    <Suspense fallback={<div className="h-96 w-full bg-bg-elevated animate-pulse rounded-card mt-4" />}>
+    <Suspense fallback={<div className="h-96 w-full bg-bg-elevated animate-pulse rounded-card" />}>
       <ThemePageClient initialData={serializedTheme} />
     </Suspense>
   )

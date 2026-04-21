@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Menu, Search, X, Home, Trophy, Bell, User as UserIcon, Settings, Library, Users } from 'lucide-react'
+import { Menu, Search, X, Home, Trophy, Bell, User as UserIcon, Settings, Library, Users, ListMusic } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { getFallbackAvatar } from '@/lib/utils'
@@ -26,6 +26,7 @@ export function AppHeader() {
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
     { path: '/library', icon: Library, label: 'Library' },
+    { path: '/playlists', icon: ListMusic, label: 'Playlists' },
     { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/notifications', icon: Bell, label: 'Notifications' },
     { path: user ? `/user/${user.username}` : '/login', icon: UserIcon, label: 'Profile' },

@@ -3,8 +3,10 @@ import { Outfit, Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { AuthProvider } from '@/providers/AuthProvider'
+import { PlayerProvider } from '@/app/context/PlayerContext'
 import { Toaster } from 'sonner'
 import './globals.css'
+import { MiniPlayer } from '@/app/components/player/MiniPlayer'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -45,10 +47,13 @@ export default function RootLayout({
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
-              <AppShell>
-                {children}
-              </AppShell>
-              <Toaster position="top-center" richColors />
+              <PlayerProvider>
+                <AppShell>
+                  {children}
+                </AppShell>
+                <MiniPlayer />
+                <Toaster position="top-center" richColors />
+              </PlayerProvider>
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>

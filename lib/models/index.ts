@@ -407,6 +407,18 @@ QuizAttemptSchema.index({ score: -1 })
 
 export const QuizAttempt = mongoose.models.QuizAttempt || mongoose.model('QuizAttempt', QuizAttemptSchema)
 
+const PlaylistSchema = new Schema({
+  userId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  name:        { type: String, required: true, trim: true, maxlength: 100 },
+  description: { type: String, default: '', maxlength: 300 },
+  themes:      [{ type: Schema.Types.ObjectId, ref: 'ThemeCache' }],
+  isPublic:    { type: Boolean, default: true },
+}, { timestamps: true })
+
+PlaylistSchema.index({ userId: 1 })
+
+export const Playlist = mongoose.models.Playlist || mongoose.model('Playlist', PlaylistSchema)
+
 const CommentSchema = new Schema({
   userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
   themeId:   { type: Schema.Types.ObjectId, ref: 'ThemeCache', required: true },

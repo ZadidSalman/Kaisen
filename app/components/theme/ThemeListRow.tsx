@@ -1,9 +1,10 @@
 'use client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, Play, Eye } from 'lucide-react'
+import { Star, Play, Eye, Pause } from 'lucide-react'
 import { IThemeCache } from '@/types/app.types'
 import { getScoreColor, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
+import { usePlayer } from '@/app/context/PlayerContext'
 
 interface ThemeListRowProps extends Partial<IThemeCache> {
   friendUsername?: string
@@ -12,6 +13,7 @@ interface ThemeListRowProps extends Partial<IThemeCache> {
 }
 
 export function ThemeListRow(props: ThemeListRowProps) {
+  const { currentTheme, isPlaying, playTheme, togglePlay } = usePlayer()
   const {
     slug,
     artistName,
@@ -80,9 +82,25 @@ export function ThemeListRow(props: ThemeListRowProps) {
           </div>
         )}
       </div>
-      <div className="w-9 h-9 rounded-full bg-accent-container
-                         flex items-center justify-center flex-shrink-0 interactive">
-        <Play className="w-4 h-4 text-accent" />
+      <div 
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (currentTheme?.slug === slug) {
+            togglePlay()
+          } else {
+            // Note: In list context we might not have a full playlist, so we just play this one theme
+            playTheme(props as IThemeCache)
+          }
+        }}
+        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 interactive transition-all
+          ${currentTheme?.slug === slug && isPlaying ? 'bg-accent text-white shadow-lg' : 'bg-accent-container text-accent'}`}
+      >
+        {currentTheme?.slug === slug && isPlaying ? (
+          <Pause className="w-4 h-4 fill-current" />
+        ) : (
+          <Play className="w-4 h-4 fill-current ml-0.5" />
+        )}
       </div>
     </Link>
   )

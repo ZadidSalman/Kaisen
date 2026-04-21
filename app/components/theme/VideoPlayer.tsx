@@ -16,10 +16,11 @@ interface VideoPlayerProps {
   themeSlug: string
   atEntryId: number
   onWatched?: () => void
+  onEnded?: () => void
   autoPlay?: boolean
 }
 
-export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, atEntryId, onWatched, autoPlay }: VideoPlayerProps) {
+export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, atEntryId, onWatched, onEnded, autoPlay }: VideoPlayerProps) {
   const { user } = useAuth()
   const hasLoggedView = useRef(false)
   const plyrRef = useRef<any>(null)
@@ -84,7 +85,8 @@ export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, a
     if (!hasLoggedView.current) {
       logView()
     }
-  }, [logView])
+    if (onEnded) onEnded()
+  }, [logView, onEnded])
 
   const handleTimeUpdate = useCallback(() => {
     if (hasLoggedView.current) return

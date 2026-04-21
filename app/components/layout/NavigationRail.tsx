@@ -2,7 +2,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Trophy, Bell, User, Settings, Library, Users } from 'lucide-react'
+import { Home, Search, Trophy, Bell, User, Settings, Library, Users, ListMusic } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getFallbackAvatar } from '@/lib/utils'
 
@@ -15,6 +15,7 @@ export function NavigationRail({ className }: { className?: string }) {
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
     { path: '/library', icon: Library, label: 'Library' },
+    { path: '/playlists', icon: ListMusic, label: 'Playlists' },
     { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/notifications', icon: Bell, label: 'Notifications' },
     { path: user ? `/user/${user.username}` : '/login', icon: User, label: 'Profile' },

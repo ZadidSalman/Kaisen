@@ -1,28 +1,45 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { IThemeCache, IThemeEntry } from '@/types/app.types'
 import { VideoPlayer } from '@/app/components/theme/VideoPlayer'
 import { WatchListenToggle } from '@/app/components/theme/WatchListenToggle'
 import { RatingWidget } from '@/app/components/theme/RatingWidget'
 import { CommentSection } from '@/app/components/theme/CommentSection'
 import { VersionSwitcher } from '@/app/components/theme/VersionSwitcher'
+import { PlaylistAddModal } from '@/app/components/theme/PlaylistAddModal'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { getScoreColor, formatCount, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { authFetch } from '@/lib/auth-client'
+import { useAuth } from '@/hooks/useAuth'
 import { motion, AnimatePresence } from 'motion/react'
-import { Star, Eye, Headphones, Download, Loader2, Share2, Info } from 'lucide-react'
+import { Star, Eye, Headphones, Download, Loader2, Share2, Info, ListMusic, SkipForward } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const isAutoplay = searchParams.get('autoplay') === 'true'
+  const initialMode = searchParams.get('mode') as 'watch' | 'listen' | null
 
   const [theme, setTheme] = useState(initialData)
+
+  useEffect(() => {
+    setTheme(initialData)
+    setSelectedEntry(initialData.entries.find(e => e.version === 'Standard') ?? initialData.entries[0])
+    setHasWatched(false)
+    setUserRating(0)
+    
+    // Sync mode if query param changes
+    const m = searchParams.get('mode') as 'watch' | 'listen' | null
+    if (m) setMode(m)
+  }, [initialData, searchParams])
+
   const animeDisplayTitle = getAnimeTitle(theme)
   const songDisplayTitle = getSongTitle(theme)
-  const [mode, setMode] = useState<'watch' | 'listen'>('watch')
+  const [mode, setMode] = useState<'watch' | 'listen'>(initialMode || 'watch')
   const [selectedEntry, setSelectedEntry] = useState<IThemeEntry>(
     theme.entries.find(e => e.version === 'Standard') ?? theme.entries[0]
   )
@@ -33,6 +50,32 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
   const [userRating, setUserRating] = useState(0)
   const [hasWatched, setHasWatched] = useState(false)
   const [similarThemes, setSimilarThemes] = useState<IThemeCache[]>([])
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false)
+
+  const playlistId = searchParams.get('playlistId')
+  const [playlist, setPlaylist] = useState<any>(null)
+
+  useEffect(() => {
+    if (playlistId) {
+      fetch(`/api/playlists/${playlistId}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.success) setPlaylist(json.data)
+        })
+    }
+  }, [playlistId])
+
+  const handleEnded = useCallback(() => {
+    if (!playlist) return
+    const currentIndex = playlist.themes.findIndex((t: any) => t.slug === theme.slug)
+    if (currentIndex !== -1 && currentIndex < playlist.themes.length - 1) {
+      const nextTheme = playlist.themes[currentIndex + 1]
+      toast.info(`Next up: ${nextTheme.songTitle || 'Next track'}`)
+      router.push(`/theme/${nextTheme.slug}?autoplay=true&mode=${mode}&playlistId=${playlistId}`)
+    } else if (currentIndex === playlist.themes.length - 1) {
+      toast.success('End of playlist')
+    }
+  }, [playlist, theme.slug, mode, playlistId, router])
 
   useEffect(() => {
     const checkUserStats = async () => {
@@ -141,7 +184,12 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
   }, [mode])
 
   return (
-    <div className="pb-8 pt-4">
+    <div className="pb-8">
+      <PlaylistAddModal 
+        themeId={theme._id} 
+        isOpen={isPlaylistModalOpen} 
+        onClose={() => setIsPlaylistModalOpen(false)} 
+      />
       <div className="-mx-4 md:mx-0">
         <VideoPlayer 
           videoSources={selectedEntry.videoSources} 
@@ -151,9 +199,29 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
           themeSlug={theme.slug}
           atEntryId={selectedEntry.atEntryId}
           onWatched={handleWatched}
+          onEnded={handleEnded}
           autoPlay={isAutoplay}
         />
       </div>
+
+      {playlist && (
+        <div className="max-w-2xl mx-auto px-4 mt-2">
+          <div className="bg-bg-elevated/50 border border-border-subtle px-3 py-1.5 rounded-full flex items-center justify-between">
+             <div className="flex items-center gap-2">
+                <ListMusic className="w-3 h-3 text-accent" />
+                <span className="text-[9px] font-display font-bold uppercase tracking-widest text-accent truncate max-w-[120px]">
+                  {playlist.name}
+                </span>
+             </div>
+             <div className="flex items-center gap-3">
+                <span className="text-[9px] font-mono font-bold text-ktext-tertiary">
+                  {playlist.themes.findIndex((t: any) => t.slug === theme.slug) + 1} / {playlist.themes.length}
+                </span>
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+             </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 mt-6 space-y-8 max-w-2xl mx-auto">
         {/* Aesthetic Header Section */}
@@ -207,43 +275,59 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
             
             <div className="flex flex-col items-center gap-2">
               <AnimatePresence mode="wait">
-                {mode === 'listen' && selectedEntry.audioUrl && (
-                  <motion.button 
-                    key="dl-mp3"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    onClick={() => handleDownload('mp3')}
-                    disabled={downloading}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-white text-xs font-bold uppercase tracking-widest interactive disabled:opacity-50 shadow-md group"
-                  >
-                    {downloading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                    )}
-                    <span>Download MP3</span>
-                  </motion.button>
-                )}
+                <div className="flex items-center gap-2">
+                  {mode === 'listen' && selectedEntry.audioUrl && (
+                    <motion.button 
+                      key="dl-mp3"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      onClick={() => handleDownload('mp3')}
+                      disabled={downloading}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-white text-xs font-bold uppercase tracking-widest interactive disabled:opacity-50 shadow-md group"
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                      )}
+                      <span>Download MP3</span>
+                    </motion.button>
+                  )}
 
-                {mode === 'watch' && selectedEntry.videoSources.length > 0 && (
-                  <motion.button 
-                    key="dl-video"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    onClick={() => handleDownload('mp4')}
-                    disabled={downloading}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-bg-elevated border border-border-subtle text-ktext-primary text-xs font-bold uppercase tracking-widest interactive hover:border-accent disabled:opacity-50 group"
+                  {mode === 'watch' && selectedEntry.videoSources.length > 0 && (
+                    <motion.button 
+                      key="dl-video"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      onClick={() => handleDownload('mp4')}
+                      disabled={downloading}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-bg-elevated border border-border-subtle text-ktext-primary text-xs font-bold uppercase tracking-widest interactive hover:border-accent disabled:opacity-50 group"
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                      )}
+                      <span>Download Video</span>
+                    </motion.button>
+                  )}
+
+                  <button 
+                    onClick={() => {
+                      if (!user) {
+                        toast.error('Please login to manage playlists')
+                        return
+                      }
+                      setIsPlaylistModalOpen(true)
+                    }}
+                    className="flex items-center justify-center p-2.5 rounded-full bg-bg-surface border border-border-default text-ktext-secondary interactive hover:text-accent hover:border-accent transition-all duration-300"
+                    title="Add to Playlist"
                   >
-                    {downloading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                    )}
-                    <span>Download Video</span>
-                  </motion.button>
-                )}
+                    <ListMusic className="w-5 h-5" />
+                  </button>
+                </div>
               </AnimatePresence>
 
               <motion.p 
