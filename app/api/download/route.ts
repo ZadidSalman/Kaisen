@@ -1,40 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ffmpeg from 'fluent-ffmpeg'
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
 import { PassThrough, Readable } from 'stream'
 import fs from 'fs'
 
-// Initialize ffmpeg path
-let ffmpegBinary = ''
+let ffmpegInitialized = false
+let ffmpegBinaryPath = ''
 
-try {
-  if (ffmpegInstaller && ffmpegInstaller.path) {
-    ffmpegBinary = ffmpegInstaller.path
-    ffmpeg.setFfmpegPath(ffmpegBinary)
-    console.log('[FFMPEG] Initialized with path:', ffmpegBinary)
-  }
-} catch (err) {
-  console.warn('[FFMPEG] Installer path detection failed, searching manually...')
+async function initFfmpeg() {
+  if (ffmpegInitialized) return ffmpegBinaryPath
   
-  const possiblePaths = [
-    '/usr/bin/ffmpeg',
-    '/usr/local/bin/ffmpeg',
-    './node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
-    '/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
-  ]
+  try {
+    // Lazy load installer to avoid build-time require issues that fail in Vercel
+    const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg').then(m => m.default || m)
+    if (ffmpegInstaller && ffmpegInstaller.path) {
+      ffmpegBinaryPath = ffmpegInstaller.path
+      ffmpeg.setFfmpegPath(ffmpegBinaryPath)
+      console.log('[FFMPEG] Initialized via installer:', ffmpegBinaryPath)
+    }
+  } catch (err) {
+    console.warn('[FFMPEG] Installer path detection failed, searching manually...')
+    
+    const possiblePaths = [
+      '/usr/bin/ffmpeg',
+      '/usr/local/bin/ffmpeg',
+      './node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
+      '/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
+    ]
 
-  for (const path of possiblePaths) {
-    if (fs.existsSync(path)) {
-      ffmpegBinary = path
-      ffmpeg.setFfmpegPath(ffmpegBinary)
-      console.log('[FFMPEG] Manual detection found:', path)
-      break
+    for (const path of possiblePaths) {
+      if (fs.existsSync(path)) {
+        ffmpegBinaryPath = path
+        ffmpeg.setFfmpegPath(ffmpegBinaryPath)
+        console.log('[FFMPEG] Manual detection found:', path)
+        break
+      }
     }
   }
-}
 
-if (!ffmpegBinary) {
-  console.warn('[FFMPEG] No binary found. MP3 conversion will be disabled.')
+  ffmpegInitialized = true
+  return ffmpegBinaryPath
 }
 
 export async function GET(req: NextRequest) {
@@ -54,6 +58,8 @@ export async function GET(req: NextRequest) {
     if (!allowedDomains.some(domain => urlHost.endsWith(domain))) {
       return NextResponse.json({ success: false, error: 'Domain not allowed' }, { status: 403 })
     }
+
+    const currentFfmpegPath = await initFfmpeg()
 
     const response = await fetch(url, {
       headers: {
@@ -75,7 +81,7 @@ export async function GET(req: NextRequest) {
     
     // CASE 1: MP3 Conversion (Method 2)
     if (targetFormat === 'mp3') {
-      if (!ffmpegBinary) {
+      if (!currentFfmpegPath) {
         return NextResponse.json({ success: false, error: 'MP3 conversion currently unavailable (server configuration issue)' }, { status: 500 })
       }
 
