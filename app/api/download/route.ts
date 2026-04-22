@@ -10,31 +10,53 @@ async function initFfmpeg() {
   if (ffmpegInitialized) return ffmpegBinaryPath
   
   try {
-    // Lazy load installer to avoid build-time require issues that fail in Vercel
+    // 1. Try ffmpeg-static first (most reliable on Vercel/Serverless)
+    const ffmpegStatic = await import('ffmpeg-static').then(m => m.default || m)
+    if (ffmpegStatic) {
+      ffmpegBinaryPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic.path
+      if (ffmpegBinaryPath) {
+        ffmpeg.setFfmpegPath(ffmpegBinaryPath)
+        console.log('[FFMPEG] Initialized via ffmpeg-static:', ffmpegBinaryPath)
+        ffmpegInitialized = true
+        return ffmpegBinaryPath
+      }
+    }
+  } catch (err) {
+    console.warn('[FFMPEG] ffmpeg-static lookup failed')
+  }
+
+  try {
+    // 2. Fallback to installer
     const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg').then(m => m.default || m)
     if (ffmpegInstaller && ffmpegInstaller.path) {
       ffmpegBinaryPath = ffmpegInstaller.path
       ffmpeg.setFfmpegPath(ffmpegBinaryPath)
       console.log('[FFMPEG] Initialized via installer:', ffmpegBinaryPath)
+      ffmpegInitialized = true
+      return ffmpegBinaryPath
     }
   } catch (err) {
-    console.warn('[FFMPEG] Installer path detection failed, searching manually...')
-    
-    const possiblePaths = [
-      '/usr/bin/ffmpeg',
-      '/usr/local/bin/ffmpeg',
-      './node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
-      '/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
-    ]
+    console.warn('[FFMPEG] Installer lookup failed')
+  }
 
-    for (const path of possiblePaths) {
+  // 3. Manual search for common paths
+  const possiblePaths = [
+    '/usr/bin/ffmpeg',
+    '/usr/local/bin/ffmpeg',
+    '/var/task/node_modules/ffmpeg-static/ffmpeg',
+    './node_modules/ffmpeg-static/ffmpeg'
+  ]
+
+  for (const path of possiblePaths) {
+    try {
       if (fs.existsSync(path)) {
         ffmpegBinaryPath = path
         ffmpeg.setFfmpegPath(ffmpegBinaryPath)
         console.log('[FFMPEG] Manual detection found:', path)
-        break
+        ffmpegInitialized = true
+        return ffmpegBinaryPath
       }
-    }
+    } catch (e) {}
   }
 
   ffmpegInitialized = true
