@@ -59,6 +59,14 @@ const nextConfig: NextConfig = {
     '@ffmpeg-installer/ffmpeg',
     '@ffmpeg-installer/linux-x64'
   ],
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/**/*': [
+        './node_modules/ffmpeg-static/**/*',
+        './node_modules/@ffmpeg-installer/**/*'
+      ],
+    },
+  },
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modifyâfile watching is disabled to prevent flickering during agent edits.

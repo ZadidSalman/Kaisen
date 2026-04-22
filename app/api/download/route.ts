@@ -2,9 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import ffmpeg from 'fluent-ffmpeg'
 import { PassThrough, Readable } from 'stream'
 import fs from 'fs'
+import path from 'path'
+import https from 'https'
 
 let ffmpegInitialized = false
 let ffmpegBinaryPath = ''
+
+async function downloadFfmpeg(): Promise<string> {
+  const tmpPath = '/tmp/ffmpeg'
+  if (fs.existsSync(tmpPath)) return tmpPath
+
+  console.log('[FFMPEG] Downloading static binary to /tmp/ffmpeg...')
+  return new Promise((resolve, reject) => {
+    // Download a lean static build of ffmpeg (johnvansickle)
+    const url = 'https://github.com/eugeneware/ffmpeg-static/releases/download/b5.0.1/linux-x64'
+    const file = fs.createWriteStream(tmpPath)
+    
+    https.get(url, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to download ffmpeg: ${response.statusCode}`))
+        return
+      }
+      
+      response.pipe(file)
+      
+      file.on('finish', () => {
+        file.close()
+        // Make executable
+        fs.chmodSync(tmpPath, 0o755)
+        resolve(tmpPath)
+      })
+    }).on('error', (err) => {
+      fs.unlink(tmpPath, () => {})
+      reject(err)
+    })
+  })
+}
 
 async function initFfmpeg() {
   if (ffmpegInitialized) return ffmpegBinaryPath
@@ -13,8 +46,9 @@ async function initFfmpeg() {
     // 1. Try ffmpeg-static first (most reliable on Vercel/Serverless)
     const ffmpegStatic = await import('ffmpeg-static').then(m => m.default || m)
     if (ffmpegStatic) {
-      ffmpegBinaryPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic.path
-      if (ffmpegBinaryPath) {
+      const p = typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic.path
+      if (p && fs.existsSync(p)) {
+        ffmpegBinaryPath = p
         ffmpeg.setFfmpegPath(ffmpegBinaryPath)
         console.log('[FFMPEG] Initialized via ffmpeg-static:', ffmpegBinaryPath)
         ffmpegInitialized = true
@@ -29,11 +63,14 @@ async function initFfmpeg() {
     // 2. Fallback to installer
     const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg').then(m => m.default || m)
     if (ffmpegInstaller && ffmpegInstaller.path) {
-      ffmpegBinaryPath = ffmpegInstaller.path
-      ffmpeg.setFfmpegPath(ffmpegBinaryPath)
-      console.log('[FFMPEG] Initialized via installer:', ffmpegBinaryPath)
-      ffmpegInitialized = true
-      return ffmpegBinaryPath
+      const p = ffmpegInstaller.path
+      if (p && fs.existsSync(p)) {
+        ffmpegBinaryPath = p
+        ffmpeg.setFfmpegPath(ffmpegBinaryPath)
+        console.log('[FFMPEG] Initialized via installer:', ffmpegBinaryPath)
+        ffmpegInitialized = true
+        return ffmpegBinaryPath
+      }
     }
   } catch (err) {
     console.warn('[FFMPEG] Installer lookup failed')
@@ -44,19 +81,31 @@ async function initFfmpeg() {
     '/usr/bin/ffmpeg',
     '/usr/local/bin/ffmpeg',
     '/var/task/node_modules/ffmpeg-static/ffmpeg',
-    './node_modules/ffmpeg-static/ffmpeg'
+    path.join(process.cwd(), 'node_modules', 'ffmpeg-static', 'ffmpeg'),
+    path.join(process.cwd(), 'node_modules', '@ffmpeg-installer', 'linux-x64', 'ffmpeg')
   ]
 
-  for (const path of possiblePaths) {
+  for (const p of possiblePaths) {
     try {
-      if (fs.existsSync(path)) {
-        ffmpegBinaryPath = path
+      if (fs.existsSync(p)) {
+        ffmpegBinaryPath = p
         ffmpeg.setFfmpegPath(ffmpegBinaryPath)
-        console.log('[FFMPEG] Manual detection found:', path)
+        console.log('[FFMPEG] Manual detection found:', p)
         ffmpegInitialized = true
         return ffmpegBinaryPath
       }
     } catch (e) {}
+  }
+
+  // 4. Last resort: Download it at runtime! (Saves Vercel Deployments)
+  try {
+    ffmpegBinaryPath = await downloadFfmpeg()
+    ffmpeg.setFfmpegPath(ffmpegBinaryPath)
+    console.log('[FFMPEG] Initialized via runtime download:', ffmpegBinaryPath)
+    ffmpegInitialized = true
+    return ffmpegBinaryPath
+  } catch (err) {
+    console.error('[FFMPEG] Runtime download failed:', err)
   }
 
   ffmpegInitialized = true
