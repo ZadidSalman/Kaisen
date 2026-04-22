@@ -107,10 +107,16 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'MP3 conversion currently unavailable (server configuration issue)' }, { status: 500 })
       }
 
+      // Vercel Serverless environment: make sure binary is executable
+      try {
+        fs.accessSync(currentFfmpegPath, fs.constants.X_OK)
+      } catch (e) {
+        try { fs.chmodSync(currentFfmpegPath, 0o755) } catch (_) {}
+      }
+
       const passThrough = new PassThrough()
       
       // Convert Web ReadableStream to Node Readable
-      // Web Streams are async iterables in Node 18+
       const nodeStream = Readable.from(response.body as any)
 
       // Start Conversion
@@ -119,12 +125,27 @@ export async function GET(req: NextRequest) {
         .audioBitrate(192)
         .on('start', (cmd) => console.log('[FFMPEG] Started:', cmd))
         .on('error', (err) => {
-          console.error('[FFMPEG] Error during conversion:', err)
-          if (!passThrough.destroyed) passThrough.destroy()
+          console.error('[FFMPEG] Error during conversion:', err.message)
+          if (!passThrough.destroyed) {
+             passThrough.destroy(err) 
+          }
         })
+        .on('end', () => console.log('[FFMPEG] Conversion Finished'))
         .pipe(passThrough, { end: true })
 
-      return new NextResponse(passThrough as any, {
+      // Convert Node PassThrough to native Web ReadableStream for stable Vercel execution
+      const webStream = new ReadableStream({
+        start(controller) {
+          passThrough.on('data', (chunk) => controller.enqueue(chunk))
+          passThrough.on('end', () => controller.close())
+          passThrough.on('error', (err) => controller.error(err))
+        },
+        cancel() {
+          passThrough.destroy()
+        }
+      })
+
+      return new NextResponse(webStream, {
         headers: {
           'Content-Type': 'audio/mpeg',
           'Content-Disposition': `attachment; filename="${filename}.mp3"`,

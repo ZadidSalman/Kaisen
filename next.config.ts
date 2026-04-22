@@ -53,6 +53,12 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ['motion'],
+  serverExternalPackages: [
+    'fluent-ffmpeg', 
+    'ffmpeg-static',
+    '@ffmpeg-installer/ffmpeg',
+    '@ffmpeg-installer/linux-x64'
+  ],
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
