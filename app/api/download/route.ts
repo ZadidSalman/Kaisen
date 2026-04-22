@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ffmpeg from 'fluent-ffmpeg'
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
 import { PassThrough, Readable } from 'stream'
 import fs from 'fs'
 
-// Manually locate ffmpeg binary as the installer module sometimes fails auto-detection in this environment
-const possiblePaths = [
-  '/node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
-  './node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
-  '/app/applet/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
-]
-
+// Initialize ffmpeg path
 let ffmpegBinary = ''
-for (const path of possiblePaths) {
-  if (fs.existsSync(path)) {
-    ffmpegBinary = path
-    break
+
+try {
+  if (ffmpegInstaller && ffmpegInstaller.path) {
+    ffmpegBinary = ffmpegInstaller.path
+    ffmpeg.setFfmpegPath(ffmpegBinary)
+    console.log('[FFMPEG] Initialized with path:', ffmpegBinary)
+  }
+} catch (err) {
+  console.warn('[FFMPEG] Installer path detection failed, searching manually...')
+  
+  const possiblePaths = [
+    '/usr/bin/ffmpeg',
+    '/usr/local/bin/ffmpeg',
+    './node_modules/@ffmpeg-installer/linux-x64/ffmpeg',
+    '/node_modules/@ffmpeg-installer/linux-x64/ffmpeg'
+  ]
+
+  for (const path of possiblePaths) {
+    if (fs.existsSync(path)) {
+      ffmpegBinary = path
+      ffmpeg.setFfmpegPath(ffmpegBinary)
+      console.log('[FFMPEG] Manual detection found:', path)
+      break
+    }
   }
 }
 
-if (ffmpegBinary) {
-  ffmpeg.setFfmpegPath(ffmpegBinary)
-} else {
-  console.warn('[FFMPEG] Binary not found in expected locations. MP3 conversion may fail.')
+if (!ffmpegBinary) {
+  console.warn('[FFMPEG] No binary found. MP3 conversion will be disabled.')
 }
 
 export async function GET(req: NextRequest) {
