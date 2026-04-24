@@ -46,7 +46,7 @@ async function initFfmpeg() {
     // 1. Try ffmpeg-static first (most reliable on Vercel/Serverless)
     const ffmpegStatic = await import('ffmpeg-static').then(m => m.default || m)
     if (ffmpegStatic) {
-      const p = typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic.path
+      const p = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any).path
       if (p && fs.existsSync(p)) {
         ffmpegBinaryPath = p
         ffmpeg.setFfmpegPath(ffmpegBinaryPath)
@@ -134,8 +134,15 @@ export async function GET(req: NextRequest) {
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Accept': 'video/webm,video/ogg,video/*;q=0.9,application/ogg;q=0.7,audio/*;q=0.6,*/*;q=0.5',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Referer': 'https://animethemes.moe/',
+        'Origin': 'https://animethemes.moe',
+        'DNT': '1',
+        'Sec-Fetch-Dest': 'video',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
       }
     })
     
@@ -172,8 +179,8 @@ export async function GET(req: NextRequest) {
       ffmpeg(nodeStream)
         .toFormat('mp3')
         .audioBitrate(192)
-        .on('start', (cmd) => console.log('[FFMPEG] Started:', cmd))
-        .on('error', (err) => {
+        .on('start', (cmd: string) => console.log('[FFMPEG] Started:', cmd))
+        .on('error', (err: Error) => {
           console.error('[FFMPEG] Error during conversion:', err.message)
           if (!passThrough.destroyed) {
              passThrough.destroy(err) 

@@ -17,6 +17,19 @@
   --color-on-accent-container: var(--on-accent-container);
   --color-accent-glow: var(--accent-glow);
 
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-secondary-hover: var(--accent-secondary-hover);
+  --color-accent-secondary-container: var(--accent-secondary-container);
+  --color-on-accent-secondary: var(--on-accent-secondary);
+
+  --color-accent-tertiary: var(--accent-tertiary);
+  --color-accent-tertiary-hover: var(--accent-tertiary-hover);
+  --color-accent-tertiary-container: var(--accent-tertiary-container);
+  --color-on-accent-tertiary: var(--on-accent-tertiary);
+
+  --color-neutral: var(--neutral);
+  --color-neutral-subtle: var(--neutral-subtle);
+
   --color-accent-mint: var(--accent-mint);
   --color-accent-mint-hover: var(--accent-mint-hover);
   --color-accent-mint-container: var(--accent-mint-container);
@@ -67,47 +80,63 @@
 
 :root {
   /* Backgrounds */
-  --bg-base:     #E8F4F7;
-  --bg-surface:  #FFFFFF;
-  --bg-elevated: #F0F8FA;
-  --bg-overlay:  #E2EFF3;
-  --bg-toast:    #D4E8ED;
-  --bg-header:   #FFFFFF;
+  --bg-base:     #FDE7ED;
+  --bg-surface:  #FBE0E7;
+  --bg-elevated: #F9D9E2;
+  --bg-overlay:  #F7D2DD;
+  --bg-toast:    #F5CBD8;
+  --bg-header:   #FDE7ED;
 
-  /* Primary Accent — Dark Teal */
-  --accent:              #0A8A96;
-  --accent-hover:        #0C9DA8;
-  --accent-pressed:      #086E78;
-  --accent-subtle:       rgba(10, 138, 150, 0.10);
-  --accent-subtle-hover: rgba(10, 138, 150, 0.18);
-  --accent-container:    rgba(10, 138, 150, 0.12);
-  --on-accent-container: #065962;
-  --accent-glow:         rgba(10, 138, 150, 0.20);
+  /* Primary Accent — Deep Magenta (#B02A69) */
+  --accent:              #B02A69;
+  --accent-hover:        #942358;
+  --accent-pressed:      #781C47;
+  --accent-subtle:       rgba(176, 42, 105, 0.10);
+  --accent-subtle-hover: rgba(176, 42, 105, 0.18);
+  --accent-container:    #FBE0E7;
+  --on-accent-container: #B02A69;
+  --accent-glow:         rgba(176, 42, 105, 0.20);
 
-  /* Secondary Accent — Mint Teal */
-  --accent-mint:           #4ECDC4;
-  --accent-mint-hover:     #60D5CD;
-  --accent-mint-container: rgba(78, 205, 196, 0.15);
-  --on-accent-mint:        #063E3A;
+  /* Secondary Accent — Purplish Pink (#B65397) */
+  --accent-secondary:           #B65397;
+  --accent-secondary-hover:     #9D4782;
+  --accent-secondary-container: rgba(182, 83, 151, 0.15);
+  --on-accent-secondary:        #B65397;
 
-  /* ED Accent — Warm Peach */
-  --accent-ed:           #F0A05A;
-  --accent-ed-subtle:    rgba(240, 160, 90, 0.12);
-  --accent-ed-container: rgba(240, 160, 90, 0.15);
-  --on-accent-ed:        #5C3200;
+  /* Tertiary Accent — Periwinkle Blue (#6C6BD4) */
+  --accent-tertiary:           #6C6BD4;
+  --accent-tertiary-hover:     #5A59B8;
+  --accent-tertiary-container: rgba(108, 107, 212, 0.15);
+  --on-accent-tertiary:        #6C6BD4;
 
-  /* Text */
-  --text-primary:   #0D1B2A;
-  --text-secondary: #4A7A85;
-  --text-tertiary:  #8FAAB0;
-  --text-disabled:  #B5CDD2;
+  /* Neutral/Muted — Warm Grayish Purple (#986985) */
+  --neutral:           #986985;
+  --neutral-subtle:    rgba(152, 105, 133, 0.12);
+
+  /* Keeps for compatibility or internal use */
+  --accent-mint:           #B65397; /* Replaced with secondary */
+  --accent-mint-hover:     #9D4782;
+  --accent-mint-container: rgba(182, 83, 151, 0.15);
+  --on-accent-mint:        #4A223D;
+
+  /* ED Accent — Use Tertiary */
+  --accent-ed:           #6C6BD4;
+  --accent-ed-subtle:    rgba(108, 107, 212, 0.12);
+  --accent-ed-container: rgba(108, 107, 212, 0.15);
+  --on-accent-ed:        #2E2E6B;
+
+  /* Text — Using the deep dark tones from the image */
+  --text-primary:   #2D1420;
+  --text-secondary: #583145;
+  --text-tertiary:  #8E697C;
+  --text-disabled:  #BCA6B1;
   --text-on-accent: #FFFFFF;
 
   /* Borders */
-  --border-subtle:  rgba(10, 138, 150, 0.08);
-  --border-default: rgba(10, 138, 150, 0.15);
-  --border-strong:  rgba(10, 138, 150, 0.30);
-  --border-accent:  rgba(10, 138, 150, 0.50);
+  --border-subtle:  rgba(176, 42, 105, 0.08);
+  --border-default: rgba(176, 42, 105, 0.15);
+  --border-strong:  rgba(176, 42, 105, 0.30);
+  --border-accent:  rgba(176, 42, 105, 0.50);
 
   /* Semantic */
   --success:  #16A34A;
@@ -116,52 +145,68 @@
   --info:     #0284C7;
 
   /* Special */
-  --logout-bg: #0A8A96;
+  --logout-bg: #B02A69;
 }
 
 [data-theme="dark"] {
-  /* Backgrounds */
-  --bg-base:     #070F18;
-  --bg-surface:  #0C1C28;
-  --bg-elevated: #112233;
-  --bg-overlay:  #162840;
-  --bg-toast:    #1A3050;
-  --bg-header:   #0A1828;
+  /* Backgrounds — Very dark purplish tones */
+  --bg-base:     #120A0E;
+  --bg-surface:  #1A0F15;
+  --bg-elevated: #24151D;
+  --bg-overlay:  #2E1B25;
+  --bg-toast:    #38212D;
+  --bg-header:   #120A0E;
 
-  /* Primary Accent — Mint Teal */
-  --accent:              #4ECDC4;
-  --accent-hover:        #60D5CD;
-  --accent-pressed:      #3EBDB5;
-  --accent-subtle:       rgba(78, 205, 196, 0.10);
-  --accent-subtle-hover: rgba(78, 205, 196, 0.18);
-  --accent-container:    rgba(78, 205, 196, 0.15);
-  --on-accent-container: #4ECDC4;
-  --accent-glow:         rgba(78, 205, 196, 0.25);
+  /* Primary Accent — Brightened Magenta (#D63D7A) */
+  --accent:              #D63D7A;
+  --accent-hover:        #E25B91;
+  --accent-pressed:      #BD2C63;
+  --accent-subtle:       rgba(214, 61, 122, 0.10);
+  --accent-subtle-hover: rgba(214, 61, 122, 0.18);
+  --accent-container:    rgba(214, 61, 122, 0.15);
+  --on-accent-container: #FFD1E3;
+  --accent-glow:         rgba(214, 61, 122, 0.25);
 
-  /* Secondary Accent — Mint */
-  --accent-mint:           #4ECDC4;
-  --accent-mint-hover:     #60D5CD;
-  --accent-mint-container: rgba(78, 205, 196, 0.15);
-  --on-accent-mint:        #063E3A;
+  /* Secondary Accent — Brightened Purplish Pink */
+  --accent-secondary:           #D673B7;
+  --accent-secondary-hover:     #E28CC3;
+  --accent-secondary-container: rgba(214, 115, 183, 0.15);
+  --on-accent-secondary:        #FFD1F0;
+
+  /* Tertiary Accent — Brightened Periwinkle */
+  --accent-tertiary:           #8C8BF4;
+  --accent-tertiary-hover:     #A6A5F8;
+  --accent-tertiary-container: rgba(140, 139, 244, 0.15);
+  --on-accent-tertiary:        #D6D5FF;
+
+  /* Neutral/Muted */
+  --neutral:           #BFA8B3;
+  --neutral-subtle:    rgba(191, 168, 179, 0.12);
+
+  /* Keeps for compatibility */
+  --accent-mint:           #D673B7;
+  --accent-mint-hover:     #E28CC3;
+  --accent-mint-container: rgba(214, 115, 183, 0.15);
+  --on-accent-mint:        #FFD1F0;
 
   /* ED Accent */
-  --accent-ed:           #F0A05A;
-  --accent-ed-subtle:    rgba(240, 160, 90, 0.12);
-  --accent-ed-container: rgba(240, 160, 90, 0.15);
-  --on-accent-ed:        #F0A05A;
+  --accent-ed:           #8C8BF4;
+  --accent-ed-subtle:    rgba(140, 139, 244, 0.12);
+  --accent-ed-container: rgba(140, 139, 244, 0.15);
+  --on-accent-ed:        #8C8BF4;
 
   /* Text */
   --text-primary:   #FFFFFF;
-  --text-secondary: #7AAAB8;
-  --text-tertiary:  #4A6878;
-  --text-disabled:  #2A4858;
-  --text-on-accent: #063E3A;
+  --text-secondary: #BFA8B3;
+  --text-tertiary:  #8C7380;
+  --text-disabled:  #59424E;
+  --text-on-accent: #FFFFFF;
 
   /* Borders */
-  --border-subtle:  rgba(78, 205, 196, 0.06);
-  --border-default: rgba(78, 205, 196, 0.12);
-  --border-strong:  rgba(78, 205, 196, 0.25);
-  --border-accent:  rgba(78, 205, 196, 0.45);
+  --border-subtle:  rgba(214, 61, 122, 0.06);
+  --border-default: rgba(214, 61, 122, 0.12);
+  --border-strong:  rgba(214, 61, 122, 0.25);
+  --border-accent:  rgba(214, 61, 122, 0.45);
 
   /* Semantic */
   --success:  #22C55E;
@@ -170,7 +215,7 @@
   --info:     #38BDF8;
 
   /* Special */
-  --logout-bg: #8B1A1A;
+  --logout-bg: #D63D7A;
 }
 
 @layer base {

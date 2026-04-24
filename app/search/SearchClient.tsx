@@ -1,16 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Search, X, Sparkles, Music, Loader2 } from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
+import { Search, X, Sparkles, Music, Loader2, ChevronRight } from 'lucide-react'
+import { useInView } from 'react-intersection-observer'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { UserCard } from '@/app/components/shared/UserCard'
+import { AnimeCard } from '@/app/components/shared/AnimeCard'
+import { ArtistCard } from '@/app/components/shared/ArtistCard'
+
+type SearchTab = 'ALL' | 'SONGS' | 'ARTISTS' | 'ANIME' | 'USERS'
 
 export function SearchClient() {
   const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'OP' | 'ED'>('ALL')
+  const [activeTab, setActiveTab] = useState<SearchTab>('ALL')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const { ref: loadMoreRef, inView } = useInView()
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
@@ -23,16 +27,15 @@ export function SearchClient() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-    status,
   } = useInfiniteQuery({
-    queryKey: ['search', debouncedQuery, activeFilter],
+    queryKey: ['search', debouncedQuery, activeTab],
     queryFn: async ({ pageParam = 1 }) => {
-      if (debouncedQuery.length < 2) return { data: [], meta: { searchType: 'none' } }
+      if (debouncedQuery.length < 2) return { data: { songs: [], artists: [], anime: [], users: [] }, meta: { searchType: 'none' } }
       const params = new URLSearchParams({
         q: debouncedQuery,
         page: pageParam.toString(),
+        type: activeTab,
       })
-      if (activeFilter !== 'ALL') params.append('type', activeFilter)
       const res = await fetch(`/api/search?${params}`)
       return res.json()
     },
@@ -41,14 +44,89 @@ export function SearchClient() {
     initialPageParam: 1,
   })
 
-  const results = data?.pages.flatMap(page => page.data) ?? []
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
+
   const meta = data?.pages[0]?.meta
-  const users = data?.pages[0]?.users ?? []
+  
+  // Flatten results for specific tabs
+  const allSongs = data?.pages.flatMap(page => page.data?.songs ?? []) ?? []
+  const allArtists = data?.pages.flatMap(page => page.data?.artists ?? []) ?? []
+  const allAnime = data?.pages.flatMap(page => page.data?.anime ?? []) ?? []
+  const allUsers = data?.pages.flatMap(page => page.data?.users ?? []) ?? []
+
+  // "All" tab uses just the first page (top 5)
+  const firstPage = data?.pages[0]?.data ?? { songs: [], artists: [], anime: [], users: [] }
+  const isAllTab = activeTab === 'ALL'
+
+  const showInfoBanners = () => {
+    const banners = []
+    // OP / ED + sequence active filter badge
+    if (meta?.themeTypeFilter) {
+      const label = meta.themeSeqFilter != null
+        ? `${meta.themeTypeFilter} ${meta.themeSeqFilter}`
+        : meta.themeTypeFilter
+      banners.push(
+        <div key="theme-type" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
+          <Music className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-xs font-body text-accent">Filtering by <span className="font-bold">{label}</span> themes</p>
+        </div>
+      )
+    }
+    if (meta?.searchType === 'semantic') {
+      banners.push(
+        <div key="semantic" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
+          <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-xs font-body text-accent">No exact matches — showing semantically related results</p>
+        </div>
+      )
+    }
+    if (meta?.searchType === 'mood') {
+      banners.push(
+        <div key="mood" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
+          <Music className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-xs font-body text-accent">Showing themes matching the mood: {meta.moods?.join(', ')}</p>
+        </div>
+      )
+    }
+    return banners.length > 0 ? <div className="flex flex-col gap-2">{banners}</div> : null
+  }
+
+  const renderEmptyState = () => {
+    if (debouncedQuery.length < 2) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-ktext-tertiary font-body">Start typing to search...</p>
+        </div>
+      )
+    }
+    if (!isLoading && allSongs.length === 0 && allArtists.length === 0 && allAnime.length === 0 && allUsers.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-ktext-tertiary font-body">No results found for &quot;{debouncedQuery}&quot;</p>
+        </div>
+      )
+    }
+    return null
+  }
+
+  const renderSectionHeader = (title: string, onSeeFull?: () => void) => (
+    <div className="flex items-center justify-between px-2 mb-3 mt-6">
+      <h3 className="text-sm font-display font-secondary font-bold text-ktext-secondary tracking-tight">{title}</h3>
+      {onSeeFull && isAllTab && (
+        <button onClick={onSeeFull} className="flex items-center text-xs font-body text-accent interactive group">
+          See Full <ChevronRight className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
+    </div>
+  )
 
   return (
     <div className="pt-4 space-y-4 pb-20">
-      <div className="flex items-center gap-3 h-12 bg-bg-elevated rounded-full px-4
-                      border border-border-default focus-within:border-border-accent transition-all">
+      <div className="flex items-center gap-3 h-12 bg-bg-elevated rounded-full px-4 border border-border-default focus-within:border-border-accent transition-all">
         <Search className="w-4 h-4 text-ktext-tertiary flex-shrink-0" />
         <input 
           value={query} 
@@ -64,79 +142,92 @@ export function SearchClient() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {['ALL', 'OP', 'ED'].map(filter => (
+        {(['ALL', 'SONGS', 'ARTISTS', 'ANIME', 'USERS'] as SearchTab[]).map(tab => (
           <button 
-            key={filter} 
-            onClick={() => setActiveFilter(filter as any)}
+            key={tab} 
+            onClick={() => setActiveTab(tab)}
             className={`flex-shrink-0 h-9 px-6 rounded-full text-sm font-body font-medium transition-all interactive
-              ${activeFilter === filter
+              ${activeTab === tab
                 ? 'bg-accent text-white shadow-md'
                 : 'bg-bg-surface border border-border-default text-ktext-secondary'
               }`}
           >
-            {filter}
+            {tab.charAt(0) + tab.slice(1).toLowerCase()}
           </button>
         ))}
       </div>
 
-      {meta?.searchType === 'semantic' && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] mb-3 animate-in fade-in slide-in-from-top-1">
-          <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs font-body text-accent">
-            No exact matches — showing semantically related results
-          </p>
-        </div>
-      )}
+      {showInfoBanners()}
 
-      {meta?.searchType === 'mood' && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] mb-3 animate-in fade-in slide-in-from-top-1">
-          <Music className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs font-body text-accent">
-            Showing themes matching the mood: {meta.moods?.join(', ')}
-          </p>
+      {isLoading ? (
+        <div className="space-y-4 mt-8">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-20 rounded-[16px] bg-bg-elevated shimmer" />
+          ))}
         </div>
-      )}
-
-      {users.length > 0 && activeFilter === 'ALL' && (
-        <div className="mb-6">
-          <h3 className="text-sm font-display font-bold text-ktext-secondary px-2 mb-3 tracking-tight">People</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {users.map((user: any) => (
-              <UserCard key={user.username} user={user} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <h3 className="text-sm font-display font-secondary font-bold text-ktext-secondary px-2 mb-3">Themes</h3>
-        <div className="space-y-2">
-          {results.length > 0 ? (
-            results.map((theme: any) => <ThemeListRow key={theme.slug} {...theme} />)
-          ) : debouncedQuery.length >= 2 && !isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-ktext-tertiary font-body">No results found for &quot;{debouncedQuery}&quot;</p>
-            </div>
-          ) : isLoading ? (
-            [...Array(5)].map((_, i) => (
-              <div key={i} className="h-20 rounded-[16px] bg-bg-elevated shimmer" />
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-ktext-tertiary font-body">Start typing to search themes...</p>
+      ) : (
+        <>
+          {/* Artists Section */}
+          {(isAllTab ? firstPage.artists.length > 0 : activeTab === 'ARTISTS' && allArtists.length > 0) && (
+            <div>
+              {renderSectionHeader('Artists', () => setActiveTab('ARTISTS'))}
+              <div className={isAllTab ? "flex gap-4 overflow-x-auto scrollbar-hide px-2 pb-2" : "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 px-2"}>
+                {(isAllTab ? firstPage.artists : allArtists).map((artist: any) => (
+                  <ArtistCard key={artist.slug} artist={artist} />
+                ))}
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {hasNextPage && (
-        <button
-          onClick={() => fetchNextPage()}
-          disabled={isFetchingNextPage}
-          className="w-full py-3 text-sm font-body text-accent font-semibold interactive"
-        >
-          {isFetchingNextPage ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Load More'}
-        </button>
+          {/* Anime Section */}
+          {(isAllTab ? firstPage.anime.length > 0 : activeTab === 'ANIME' && allAnime.length > 0) && (
+            <div>
+              {renderSectionHeader('Anime', () => setActiveTab('ANIME'))}
+              <div className={isAllTab ? "flex gap-4 overflow-x-auto scrollbar-hide px-2 pb-2" : "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 px-2"}>
+                {(isAllTab ? firstPage.anime : allAnime).map((animeItem: any) => (
+                  <AnimeCard key={animeItem.anilistId || animeItem.kitsuId || animeItem.malId} anime={animeItem} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Songs Section */}
+          {(isAllTab ? firstPage.songs.length > 0 : activeTab === 'SONGS' && allSongs.length > 0) && (
+            <div>
+              {renderSectionHeader('Songs', () => setActiveTab('SONGS'))}
+              <div className="space-y-2">
+                {(isAllTab ? firstPage.songs : allSongs).map((theme: any) => (
+                  <ThemeListRow key={theme.slug} {...theme} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Users Section */}
+          {(isAllTab ? firstPage.users.length > 0 : activeTab === 'USERS' && allUsers.length > 0) && (
+            <div>
+              {renderSectionHeader('People', () => setActiveTab('USERS'))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-2">
+                {(isAllTab ? firstPage.users : allUsers).map((user: any) => (
+                  <UserCard key={user.username} user={user} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {renderEmptyState()}
+
+          {/* Infinite Scroll Trigger */}
+          {!isAllTab && hasNextPage && (
+            <div ref={loadMoreRef} className="w-full py-8 flex justify-center">
+              {isFetchingNextPage ? (
+                <Loader2 className="w-6 h-6 animate-spin text-accent" />
+              ) : (
+                <div className="w-6 h-6" /> // Placeholder to trigger intersection
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         px-4 md:px-6 lg:px-8
       ">
         <div className="max-w-2xl mx-auto md:max-w-7xl">
-          <AppHeader />
+          {pathname !== '/quiz' && <AppHeader />}
           {children}
         </div>
       </main>

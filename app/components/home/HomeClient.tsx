@@ -7,6 +7,7 @@ import { useInView } from 'react-intersection-observer'
 import { ThemeFeaturedCard } from '@/app/components/theme/ThemeFeaturedCard'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { SurpriseBanner } from '@/app/components/shared/SurpriseBanner'
+import { FriendsActivity } from '@/app/components/home/FriendsActivity'
 import { fetchPopularThemes, fetchSeasonalThemes } from '@/lib/api/themes'
 import { queryKeys } from '@/lib/queryKeys'
 import { useAuth } from '@/hooks/useAuth'
@@ -78,6 +79,9 @@ export function HomeClient() {
       <section className="py-2">
         <SurpriseBanner />
       </section>
+
+      {/* Friends Activity */}
+      <FriendsActivity />
 
       {/* Popular Themes */}
       <section>

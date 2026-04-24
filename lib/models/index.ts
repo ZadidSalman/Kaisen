@@ -337,6 +337,18 @@ FollowSchema.index({ followeeId: 1 })
 FollowSchema.post('save', async function () {
   await mongoose.model('User').findByIdAndUpdate(this.followerId, { $inc: { totalFollowing: 1 } })
   await mongoose.model('User').findByIdAndUpdate(this.followeeId, { $inc: { totalFollowers: 1 } })
+  
+  // Create notification
+  try {
+    await mongoose.model('Notification').create({
+      recipientId: this.followeeId,
+      actorId: this.followerId,
+      type: 'follow',
+      read: false
+    })
+  } catch (err) {
+    console.error('Failed to create follow notification:', err)
+  }
 })
 
 FollowSchema.post('findOneAndDelete', async function (doc) {
@@ -367,6 +379,9 @@ const NotificationSchema = new Schema({
       'follow',
       'theme_rated',
       'theme_favorited',
+      'comment',
+      'rating_like',
+      'playlist_like',
     ],
     required: true,
   },

@@ -1,7 +1,9 @@
 'use client'
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { Plyr } from 'plyr-react'
+import dynamic from 'next/dynamic'
+
+const Plyr = dynamic(() => import('plyr-react').then((mod) => mod.Plyr), { ssr: false })
 import 'plyr-react/plyr.css'
 import { authFetch } from '@/lib/auth-client'
 import { Play, Pause } from 'lucide-react'

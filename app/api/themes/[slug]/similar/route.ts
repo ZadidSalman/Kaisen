@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
       ]
     })
     .sort({ totalRatings: -1, avgRating: -1 })
-    .limit(10)
+    .limit(20)
     .lean()
 
     return NextResponse.json({ success: true, data: similar })

@@ -24,7 +24,16 @@ export async function fetchLiveStats() {
   return res.json()
 }
 
-export async function fetchLibraryThemes() {
-  const res = await authFetch('/api/themes/library')
+export async function fetchLibraryThemes(type?: 'OP' | 'ED', page = 1, limit = 20) {
+  const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() })
+  if (type) params.append('type', type)
+  const res = await authFetch(`/api/themes/library?${params}`)
+  return res.json()
+}
+
+export async function fetchFavoriteThemes(type?: 'OP' | 'ED', page = 1, limit = 20) {
+  const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() })
+  if (type) params.append('type', type)
+  const res = await authFetch(`/api/themes/favorites?${params}`)
   return res.json()
 }

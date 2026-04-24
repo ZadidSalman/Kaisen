@@ -1,7 +1,8 @@
 'use client'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, Play, Eye, Pause } from 'lucide-react'
+import { Star, Heart, MoreVertical } from 'lucide-react'
 import { IThemeCache } from '@/types/app.types'
 import { getScoreColor, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { usePlayer } from '@/app/context/PlayerContext'
@@ -18,31 +19,22 @@ export function ThemeListRow(props: ThemeListRowProps) {
     slug,
     artistName,
     animeCoverImage,
-    type,
-    sequence,
-    avgRating,
-    totalRatings,
-    friendUsername,
-    friendScore,
-    isWatched,
   } = props
   const animeDisplayTitle = getAnimeTitle(props)
   const songDisplayTitle = getSongTitle(props)
   const fallback = getFallbackImage(slug || animeDisplayTitle || undefined)
 
+  // Use a mock liked state for visual match, or integrate real later
+  const [isLiked, setIsLiked] = useState(false)
+
   return (
     <Link href={`/theme/${slug}`} className="
-      flex items-center gap-3 p-3
-      bg-bg-surface rounded-[16px]
-      border border-border-subtle
-      shadow-card interactive cursor-pointer
-      transition-all duration-200 hover:shadow-card-hover hover:border-border-default
-      relative
+      flex items-center gap-3 p-2 sm:p-3
+      bg-accent-container rounded-3xl
+      shadow-sm interactive cursor-pointer
+      transition-all duration-200 hover:shadow-md
     ">
-      {isWatched && (
-        <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent-mint shadow-[0_0_8px_rgba(var(--accent-mint-rgb),0.6)]" title="Watched" />
-      )}
-      <div className="w-16 h-16 flex-shrink-0 rounded-[12px] overflow-hidden bg-bg-elevated relative">
+      <div className="w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[18px] overflow-hidden bg-bg-elevated relative">
         <Image 
           src={animeCoverImage || fallback} 
           fill
@@ -51,56 +43,32 @@ export function ThemeListRow(props: ThemeListRowProps) {
           referrerPolicy="no-referrer"
         />
       </div>
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className={`
-            text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
-            ${type === 'OP'
-              ? 'bg-accent-container text-accent'
-              : 'bg-accent-ed-container text-accent-ed'
-            }
-          `}>
-            {type}{sequence}
-          </span>
-        </div>
-        <p className="text-sm font-body font-semibold text-ktext-primary truncate">{songDisplayTitle}</p>
-        <p className="text-xs font-body text-ktext-secondary truncate">
-          {artistName} · {animeDisplayTitle}
+      <div className="flex-1 min-w-0">
+        <p className="text-base font-display font-bold text-ktext-primary truncate">{songDisplayTitle}</p>
+        <p className="text-xs sm:text-sm font-body text-ktext-secondary truncate">
+          {artistName || animeDisplayTitle}
         </p>
-        {friendUsername && (
-          <p className="text-xs font-body text-accent truncate">
-            @{friendUsername} rated {friendScore}/10
-          </p>
-        )}
-        {!friendUsername && (
-          <div className="flex items-center gap-2 pt-0.5">
-            <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-            <span className="text-xs font-mono font-bold text-ktext-secondary">
-              {avgRating?.toFixed(1) ?? '—'}
-            </span>
-            <span className="text-xs text-ktext-tertiary">({totalRatings ?? 0})</span>
-          </div>
-        )}
       </div>
-      <div 
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          if (currentTheme?.slug === slug) {
-            togglePlay()
-          } else {
-            // Note: In list context we might not have a full playlist, so we just play this one theme
-            playTheme(props as IThemeCache)
-          }
-        }}
-        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 interactive transition-all
-          ${currentTheme?.slug === slug && isPlaying ? 'bg-accent text-white shadow-lg' : 'bg-accent-container text-accent'}`}
-      >
-        {currentTheme?.slug === slug && isPlaying ? (
-          <Pause className="w-4 h-4 fill-current" />
-        ) : (
-          <Play className="w-4 h-4 fill-current ml-0.5" />
-        )}
+      <div className="flex items-center gap-2 pr-2">
+        <button 
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setIsLiked(!isLiked)
+          }}
+          className="p-2 rounded-full interactive transition-colors"
+        >
+          <Heart className={`w-5 h-5 ${isLiked ? 'fill-accent text-accent' : 'text-ktext-secondary fill-ktext-secondary'}`} />
+        </button>
+        <button 
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          className="p-1 rounded-full interactive text-ktext-secondary"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
       </div>
     </Link>
   )

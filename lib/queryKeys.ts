@@ -20,6 +20,7 @@ export const queryKeys = {
     requestsSent: (userId: string) => ['friends', 'requests', 'sent', userId],
     status:       (username: string) => ['friends', 'status', username],
     activity:     (userId: string) => ['friends', 'activity', userId],
+    socialFeed:   () => ['friends', 'social-feed'],
   },
   follow: {
     status:    (username: string) => ['follow', 'status', username],

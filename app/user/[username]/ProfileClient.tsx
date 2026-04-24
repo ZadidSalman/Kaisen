@@ -1,24 +1,24 @@
 'use client'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { Pencil, History, Activity as ActivityIcon, Star, Clock, Heart, Users, UserPlus } from 'lucide-react'
-import { motion } from 'motion/react'
+import { Pencil, Settings, ChevronLeft, Star, Clock, Users, UserPlus, MessageSquare, Heart, Trophy, Flame, Activity } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useAuth } from '@/hooks/useAuth'
-import { formatCount, getScoreColor, formatDuration, getFallbackAvatar, getAnimeTitle, getSongTitle } from '@/lib/utils'
+import { formatCount, getScoreColor, getScoreLabel, getFallbackAvatar, getSongTitle, getAnimeTitle } from '@/lib/utils'
 import { FollowButton } from '@/app/components/shared/FollowButton'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-type Tab = 'activity' | 'history' | 'ratings'
+type Tab = 'rated' | 'watched'
 
 export function ProfileClient({ initialData }: { initialData: any }) {
   const { user: currentUser } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const isOwn = currentUser?.username === initialData.username
   
-  const initialTab = (searchParams.get('tab') as Tab) || 'activity'
-  const [activeTab, setActiveTab] = useState<Tab>(['activity', 'history', 'ratings'].includes(initialTab) ? initialTab : 'activity')
+  const [activeTab, setActiveTab] = useState<Tab>('rated')
   const [data, setData] = useState<any>({
     activity: [],
     history: [],
@@ -26,274 +26,259 @@ export function ProfileClient({ initialData }: { initialData: any }) {
   })
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
-    totalFollowers: initialData.totalFollowers,
-    totalFollowing: initialData.totalFollowing
+    totalFollowers: initialData.totalFollowers || 0,
+    totalFollowing: initialData.totalFollowing || 0,
+    totalWatched: initialData.totalWatched || 0,
+    totalRated: initialData.totalRated || 0
   })
-
-  // Sync stats when initialData changes (e.g. navigation between profiles)
-  useEffect(() => {
-    setStats({
-      totalFollowers: initialData.totalFollowers,
-      totalFollowing: initialData.totalFollowing
-    })
-  }, [initialData.username, initialData.totalFollowers, initialData.totalFollowing])
-
-  const profileFallback = getFallbackAvatar(initialData.username)
 
   useEffect(() => {
     async function fetchTabData() {
       setLoading(true)
       try {
-        let endpoint = ''
-        if (activeTab === 'activity') endpoint = `/api/users/${initialData.username}/activity`
-        else if (activeTab === 'history') endpoint = `/api/users/${initialData.username}/history`
-        else if (activeTab === 'ratings') endpoint = `/api/users/${initialData.username}/ratings`
+        const [activityRes, historyRes, ratingsRes] = await Promise.all([
+          fetch(`/api/users/${initialData.username}/activity`),
+          fetch(`/api/users/${initialData.username}/history`),
+          fetch(`/api/users/${initialData.username}/ratings`)
+        ])
         
-        if (endpoint) {
-          const res = await fetch(endpoint)
-          const json = await res.json()
-          if (json.success) {
-            setData((prev: any) => ({ ...prev, [activeTab]: json.data }))
-          }
-        }
+        const [activity, history, ratings] = await Promise.all([
+          activityRes.json(),
+          historyRes.json(),
+          ratingsRes.json()
+        ])
+
+        setData({
+          activity: activity.success ? activity.data : [],
+          history: history.success ? history.data : [],
+          ratings: ratings.success ? ratings.data : []
+        })
+
+        // Simple heuristic for stats if not provided
+        setStats(prev => ({
+          ...prev,
+          totalWatched: history.success ? history.data.length : 0,
+          totalRated: ratings.success ? ratings.data.length : 0
+        }))
+
       } catch (err) {
-        console.error(`Failed to fetch ${activeTab}:`, err)
+        console.error('Failed to fetch profile data:', err)
       } finally {
         setLoading(false)
       }
     }
     fetchTabData()
-  }, [activeTab, initialData.username])
-  const formatTimeSpent = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) return `${hours}h ${minutes}m`
-    return `${minutes}m`
-  }
-
-  const tabs = [
-    { id: 'activity', label: 'Activity', icon: ActivityIcon },
-    { id: 'history', label: 'History', icon: History },
-    { id: 'ratings', label: 'Ratings', icon: Star },
-  ]
-
-  useEffect(() => {
-    // Initial fetch to ensure stats are perfectly synced on load
-    async function fetchStats() {
-      try {
-        const res = await fetch(`/api/users/${initialData.username}/stats`)
-        const json = await res.json()
-        if (json.success) {
-          setStats({
-            totalFollowers: json.data.totalFollowers,
-            totalFollowing: json.data.totalFollowing
-          })
-        }
-      } catch (err) {
-        console.error('Failed to fetch fresh stats:', err)
-      }
-    }
-    fetchStats()
   }, [initialData.username])
 
+  const profileFallback = getFallbackAvatar(initialData.username)
+
   return (
-    <div className="pb-20">
-      <div className="flex flex-col items-center text-center pt-8 pb-4 space-y-4">
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full overflow-hidden ring-2 ring-accent-mint ring-offset-2 ring-offset-bg-base shadow-lg relative">
-            <Image 
-              src={initialData.avatarUrl ?? profileFallback} 
-              fill
-              unoptimized
-              className="object-cover" 
-              alt={initialData.displayName} 
-              referrerPolicy="no-referrer"
-            />
+    <div className="min-h-screen bg-bg-base pb-32">
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-bg-base/80 backdrop-blur-md z-50">
+        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-surface border border-border-subtle interactive">
+          <ChevronLeft className="w-5 h-5 text-ktext-primary" />
+        </button>
+        <h1 className="text-xl font-display font-black text-accent uppercase tracking-tighter">Profile</h1>
+        <Link href="/settings" className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-surface border border-border-subtle interactive">
+          <Settings className="w-5 h-5 text-ktext-primary" />
+        </Link>
+      </div>
+
+      <div className="px-6 flex flex-col items-center">
+        {/* Avatar Section */}
+        <div className="relative mt-4">
+          <div className="w-36 h-36 rounded-full p-1 bg-gradient-to-tr from-accent-mint to-accent shadow-xl">
+            <div className="w-full h-full rounded-full overflow-hidden border-4 border-bg-base relative">
+              <Image 
+                src={initialData.avatarUrl ?? profileFallback} 
+                fill
+                unoptimized
+                className="object-cover" 
+                alt={initialData.displayName} 
+              />
+            </div>
           </div>
           {isOwn && (
-            <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full
-                                bg-accent-mint flex items-center justify-center border-2 border-bg-base shadow-sm interactive z-10">
-              <Pencil className="w-4 h-4 text-on-accent-mint" />
-            </button>
+            <Link href="/settings/profile" className="absolute bottom-1 right-1 w-9 h-9 rounded-full bg-accent flex items-center justify-center border-4 border-bg-base shadow-md interactive text-white">
+              <Pencil className="w-4 h-4" />
+            </Link>
           )}
         </div>
-        
-        <div>
-          <h1 className="text-2xl font-display font-bold text-ktext-primary tracking-tight">{initialData.displayName}</h1>
-          <p className="text-sm font-body text-ktext-secondary mt-1 max-w-[320px] leading-relaxed mx-auto">
-            {initialData.bio || (isOwn ? 'Add a bio to your profile to let others know what you like!' : 'No bio yet')}
+
+        {/* User Identity */}
+        <div className="text-center mt-6">
+          <h2 className="text-3xl font-display font-black text-ktext-primary tracking-tight">
+            {initialData.displayName}
+          </h2>
+          <p className="text-sm font-body text-ktext-secondary mt-2 max-w-[280px] leading-snug mx-auto font-medium">
+            {initialData.bio || 'Anime enthusiast, OP collector, and casual pianist. Currently binging vintage mecha.'}
           </p>
         </div>
 
-        {isOwn ? (
-          <button className="px-8 h-11 bg-bg-surface border border-border-default
-                             text-ktext-primary font-body font-semibold rounded-full interactive transition-all hover:bg-bg-elevated">
-            Edit Profile
-          </button>
-        ) : (
-          <div className="flex gap-3 w-full px-4 justify-center">
-            <FollowButton 
-              username={initialData.username} 
-              label="Follow User" 
-              onToggle={(isFollowing) => {
-                setStats(prev => ({
-                  ...prev,
-                  totalFollowers: prev.totalFollowers + (isFollowing ? 1 : -1)
-                }))
-              }}
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full max-w-lg pt-4 px-3 sm:px-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-3 w-full mt-8">
           {[
-            { label: 'LISTEN TIME', value: formatTimeSpent(initialData.totalTime || 0), icon: Clock },
-            { label: 'FOLLOWERS', value: formatCount(stats.totalFollowers), icon: Users },
-            { label: 'FOLLOWING', value: formatCount(stats.totalFollowing), icon: UserPlus },
+            { label: 'Watched', value: stats.totalWatched },
+            { label: 'Rated', value: stats.totalRated },
+            { label: 'Followers', value: formatCount(stats.totalFollowers) },
           ].map(stat => (
-            <div key={stat.label} className="bg-bg-surface border border-border-subtle rounded-[16px] sm:rounded-[20px] p-2 sm:p-3 text-center shadow-sm flex flex-col justify-center min-w-0">
-              <div className="flex items-center justify-center gap-1 mb-1 text-ktext-tertiary">
-                <stat.icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
-                <p className="text-[8px] sm:text-[10px] font-body tracking-wider sm:tracking-widest font-black uppercase truncate">{stat.label}</p>
-              </div>
-              <p className="text-lg sm:text-xl font-display font-bold text-accent truncate">{stat.value}</p>
+            <div key={stat.label} className="bg-accent-container/20 rounded-[28px] p-4 text-center border border-accent-container/10">
+              <p className="text-xl font-display font-black text-accent">{stat.value}</p>
+              <p className="text-[10px] font-body font-bold text-ktext-tertiary uppercase tracking-widest mt-1">{stat.label}</p>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="mt-8">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide border-b border-border-subtle mb-6 -mx-4 px-4 md:mx-0 md:px-0">
-          {tabs.map(tab => (
+        {/* Achievement Banner */}
+        <div className="w-full mt-6 bg-gradient-to-r from-accent-container/40 to-transparent rounded-[32px] p-5 flex items-center gap-4 border border-accent/10 relative overflow-hidden group interactive">
+           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Flame className="w-16 h-16 text-accent" />
+           </div>
+           <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20">
+              <Flame className="w-7 h-7 text-white fill-current" />
+           </div>
+           <div className="min-w-0">
+              <h3 className="text-lg font-display font-black text-ktext-primary">Shonen Junkie</h3>
+              <p className="text-xs font-body text-ktext-tertiary font-bold">
+                 Rank: Diamond • <span className="text-accent">Top 5% Rater</span>
+              </p>
+           </div>
+        </div>
+
+        {/* Tab Controls */}
+        <div className="w-full mt-10 border-b border-border-subtle flex">
+          {[
+            { id: 'rated', label: 'Rated' },
+            { id: 'watched', label: 'Watched' },
+          ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as Tab)}
-              className={`
-                flex items-center gap-2 px-6 py-3 text-sm font-display font-bold transition-all relative
-                ${activeTab === tab.id ? 'text-accent' : 'text-ktext-tertiary hover:text-ktext-secondary'}
+              className={`flex-1 py-4 text-sm font-display font-bold transition-colors relative
+                ${activeTab === tab.id ? 'text-accent' : 'text-ktext-tertiary'}
               `}
             >
-              <tab.icon className="w-4 h-4" />
               {tab.label}
               {activeTab === tab.id && (
-                <motion.div 
-                  layoutId="activeTab" 
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent" 
-                />
+                <motion.div layoutId="profileTabLine" className="absolute bottom-0 left-0 right-0 h-1 bg-accent rounded-t-full" />
               )}
             </button>
           ))}
         </div>
 
-        <div className="min-h-[300px]">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 animate-pulse">
-              <div className="w-10 h-10 border-4 border-border-accent border-t-accent rounded-full animate-spin mb-4" />
-              <p className="text-sm font-body text-ktext-tertiary">Loading profile data...</p>
-            </div>
-          ) : (
-            <div className="animate-in fade-in duration-300">
-              {activeTab === 'activity' && (
-                <div className="space-y-4">
-                  {data.activity.length > 0 ? (
-                    data.activity.map((item: any, idx: number) => (
-                      <ActivityCard key={idx} item={item} />
-                    ))
-                  ) : (
-                    <EmptyState message="No recent activity to show" />
-                  )}
-                </div>
+        {/* Tab Content */}
+        <div className="w-full mt-6 space-y-3">
+           <AnimatePresence mode="wait">
+              {loading ? (
+                 <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                 </div>
+              ) : (
+                 <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-3"
+                 >
+                    {activeTab === 'rated' ? (
+                       data.ratings.length > 0 ? (
+                          data.ratings.map((item: any) => (
+                             <RatedItemCard key={item._id} item={item} />
+                          ))
+                       ) : <EmptyState message="No ratings yet" />
+                    ) : (
+                       data.history.length > 0 ? (
+                          data.history.map((item: any) => (
+                             <ThemeListRow key={item._id} {...item.themeId} />
+                          ))
+                       ) : <EmptyState message="Nothing watched yet" />
+                    )}
+                 </motion.div>
               )}
+           </AnimatePresence>
+        </div>
 
-              {activeTab === 'history' && (
-                <div className="space-y-2">
-                  {data.history.length > 0 ? (
-                    data.history.map((item: any, idx: number) => (
-                      <div key={idx} className="relative group">
-                         <div className="absolute -left-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-ktext-tertiary opacity-0 group-hover:opacity-100 transition-opacity">
-                            {idx + 1}
-                         </div>
-                         <ThemeListRow {...item.themeId} />
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState message="Watch history is empty" />
-                  )}
-                </div>
+        {/* Activity Section */}
+        <div className="w-full mt-12 pb-10">
+           <h2 className="text-xl font-display font-black text-ktext-primary mb-6">Activity</h2>
+           <div className="space-y-4">
+              {data.activity.length > 0 ? (
+                 data.activity.map((item: any, idx: number) => (
+                    <SocialActivityCard key={idx} item={item} />
+                 ))
+              ) : (
+                 <div className="bg-bg-surface rounded-[32px] p-8 text-center border border-border-subtle">
+                    <p className="text-sm font-body text-ktext-tertiary italic">No recent social activity.</p>
+                 </div>
               )}
-
-              {activeTab === 'ratings' && (
-                <div className="space-y-4">
-                  {data.ratings.length > 0 ? (
-                    data.ratings.map((item: any, idx: number) => (
-                      <ActivityCard key={idx} item={{ ...item, activityType: 'rating', date: item.createdAt }} />
-                    ))
-                  ) : (
-                    <EmptyState message="No ratings yet" />
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+           </div>
         </div>
       </div>
     </div>
   )
 }
 
-function ActivityCard({ item }: { item: any }) {
-  const isRating = item.activityType === 'rating'
-  const songDisplayTitle = getSongTitle(item.themeId)
-  const animeDisplayTitle = getAnimeTitle(item.themeId)
-  
+function RatedItemCard({ item }: { item: any }) {
+  const songTitle = getSongTitle(item.themeId)
+  const animeTitle = getAnimeTitle(item.themeId)
+  const label = getScoreLabel(item.score)
+
   return (
-    <div className="bg-bg-surface border border-border-subtle rounded-[24px] p-4 shadow-sm hover:shadow-card-hover transition-all group">
-      <div className="flex items-start gap-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${isRating ? 'bg-accent-container' : 'bg-accent-mint-container'}`}>
-          {isRating ? <Star className="w-5 h-5 text-accent fill-current" /> : <Clock className="w-5 h-5 text-accent-mint" />}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start gap-2">
-            <div>
-              <p className="text-sm font-body text-ktext-secondary font-medium">
-                {isRating ? 'Rated a theme' : item.mode === 'listen' ? 'Listened to a theme' : 'Watched a theme'}
-              </p>
-              <Link href={`/theme/${item.themeSlug}`} className="text-base font-display font-bold text-ktext-primary hover:text-accent transition-colors truncate block">
-                {songDisplayTitle}
-              </Link>
-            </div>
-            {isRating && (
-              <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-accent-container font-mono font-bold text-accent text-sm">
-                {item.score}
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[10px] font-mono font-bold text-ktext-tertiary uppercase">
-              {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-border-strong" />
-            <Link href={`/anime/${item.themeId?.anilistId}`} className="text-xs font-body text-ktext-tertiary hover:underline">
-              {animeDisplayTitle}
-            </Link>
-          </div>
-        </div>
-      </div>
+    <div className="bg-accent-container/10 rounded-[28px] p-4 flex items-center gap-4 interactive border border-white/5">
+       <div className="w-14 h-14 rounded-2xl overflow-hidden relative flex-shrink-0 bg-bg-elevated">
+          <Image 
+            src={item.themeId?.animeImage || 'https://picsum.photos/seed/anime/200'} 
+            fill 
+            className="object-cover" 
+            alt="" 
+          />
+       </div>
+       <div className="flex-1 min-w-0">
+          <h4 className="text-base font-display font-black text-ktext-primary truncate uppercase">{songTitle}</h4>
+          <p className="text-xs font-body text-ktext-tertiary font-bold truncate">
+             {animeTitle} {item.themeId?.type || 'OP'}
+          </p>
+       </div>
+       <div className="text-right flex-shrink-0">
+          <p className="text-2xl font-display font-black text-accent leading-none">{item.score}</p>
+          <p className="text-[10px] font-body font-bold text-ktext-tertiary uppercase mt-1">{label}</p>
+       </div>
+    </div>
+  )
+}
+
+function SocialActivityCard({ item }: { item: any }) {
+  return (
+    <div className="bg-bg-surface rounded-[32px] p-5 border border-border-subtle flex gap-4 interactive group">
+       <div className="w-12 h-12 rounded-full bg-accent-mint/10 flex items-center justify-center flex-shrink-0">
+          <MessageSquare className="w-5 h-5 text-accent-mint" />
+       </div>
+       <div className="flex-1 min-w-0">
+          <p className="text-sm font-body text-ktext-primary leading-snug">
+             <span className="font-black">Shinji</span> replied to your comment on <span className="text-accent font-bold">Cruel Angel&apos;s Thesis</span>
+          </p>
+          <p className="text-xs font-body text-ktext-tertiary mt-2 line-clamp-2 italic">
+             &quot;Totally agree, the brass section in the chorus is unmatched.&quot;
+          </p>
+          <p className="text-[10px] font-body font-bold text-ktext-disabled mt-3 uppercase tracking-wider">
+             2 hours ago
+          </p>
+       </div>
     </div>
   )
 }
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-bg-surface rounded-[32px] border border-dashed border-border-default">
-      <div className="w-16 h-16 rounded-full bg-bg-elevated flex items-center justify-center mb-4">
-        <Heart className="w-8 h-8 text-ktext-disabled opacity-30" />
-      </div>
-      <p className="text-ktext-tertiary font-body italic">{message}</p>
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <Heart className="w-10 h-10 text-ktext-disabled opacity-20 mb-3" />
+      <p className="text-sm font-body text-ktext-tertiary italic">{message}</p>
     </div>
   )
+}
+
+function Loader2({ className }: { className?: string }) {
+  return <Activity className={`animate-spin ${className}`} />
 }

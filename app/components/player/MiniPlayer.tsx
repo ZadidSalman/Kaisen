@@ -111,7 +111,7 @@ export function MiniPlayer() {
 
         {/* Controls */}
         <div className="flex items-center gap-2 md:gap-5">
-          <button onClick={previous} className="p-2 text-ktext-secondary hover:text-accent interactive rounded-full transition-colors hidden sm:block">
+          <button onClick={previous} className="p-2 text-ktext-secondary hover:text-accent interactive rounded-full transition-colors">
             <SkipBack className="w-4 h-4 md:w-5 md:h-5 fill-current" />
           </button>
           

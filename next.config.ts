@@ -50,6 +50,26 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'kitsu.io',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.pinimg.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'w0.peakpx.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'e0.pxfuel.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'wallpapercave.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.wallpapersden.com',
+      },
     ],
   },
   transpilePackages: ['motion'],
@@ -59,13 +79,11 @@ const nextConfig: NextConfig = {
     '@ffmpeg-installer/ffmpeg',
     '@ffmpeg-installer/linux-x64'
   ],
-  experimental: {
-    outputFileTracingIncludes: {
-      '/api/**/*': [
-        './node_modules/ffmpeg-static/**/*',
-        './node_modules/@ffmpeg-installer/**/*'
-      ],
-    },
+  outputFileTracingIncludes: {
+    '/api/**/*': [
+      './node_modules/ffmpeg-static/**/*',
+      './node_modules/@ffmpeg-installer/**/*'
+    ],
   },
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.

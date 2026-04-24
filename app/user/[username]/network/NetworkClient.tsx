@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'motion/react'
 import { UserCard } from '@/app/components/shared/UserCard'
-import { Users, UserPlus, ArrowLeft, Heart } from 'lucide-react'
+import { Users, UserPlus, ArrowLeft, Heart, Zap, UserCheck } from 'lucide-react'
+import { FriendsActivity } from '@/app/components/home/FriendsActivity'
 import Link from 'next/link'
 
 type Tab = 'followers' | 'following'
@@ -13,11 +14,14 @@ export function NetworkClient({ initialUser }: { initialUser: any }) {
   const router = useRouter()
   const initialTab = (searchParams.get('tab') as Tab) || 'followers'
   const [activeTab, setActiveTab] = useState<Tab>(['followers', 'following'].includes(initialTab) ? initialTab : 'followers')
-  const [data, setData] = useState<{ followers: any[], following: any[] }>({
+  const [data, setData] = useState<{ followers: any[], following: any[], friends: any[], activities: any[] }>({
     followers: [],
-    following: []
+    following: [],
+    friends: [],
+    activities: []
   })
   const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     async function fetchNetworkData() {
@@ -44,10 +48,12 @@ export function NetworkClient({ initialUser }: { initialUser: any }) {
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab)
+    setShowAll(false)
     router.replace(`/user/${initialUser.username}/network?tab=${tab}`, { scroll: false })
   }
 
-  const currentList = activeTab === 'followers' ? data.followers : data.following
+  const currentList = data[activeTab] || []
+  const displayedList = showAll ? currentList : currentList.slice(0, 7)
 
   return (
     <div className="max-w-4xl mx-auto py-6">
@@ -86,7 +92,7 @@ export function NetworkClient({ initialUser }: { initialUser: any }) {
         ))}
       </div>
 
-      <div className="min-h-[400px]">
+      <div className="">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-10 h-10 border-4 border-border-accent border-t-accent rounded-full animate-spin mb-4" />
@@ -95,10 +101,23 @@ export function NetworkClient({ initialUser }: { initialUser: any }) {
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             {currentList && currentList.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {currentList.map((user: any) => (
-                  <UserCard key={user.username} user={user} />
-                ))}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {displayedList.map((user: any) => (
+                    <UserCard key={user.username} user={user} />
+                  ))}
+                </div>
+                
+                {currentList.length > 7 && !showAll && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="px-8 py-3 rounded-2xl bg-bg-surface border border-border-subtle text-sm font-display font-bold text-ktext-secondary hover:text-accent hover:border-accent transition-all interactive"
+                    >
+                      View Full List
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-bg-surface rounded-[32px] border border-dashed border-border-default">
@@ -112,6 +131,11 @@ export function NetworkClient({ initialUser }: { initialUser: any }) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Recent Activity Section - Home Page Style */}
+      <div className="mt-12 pt-12 border-t border-border-subtle">
+        <FriendsActivity />
       </div>
     </div>
   )

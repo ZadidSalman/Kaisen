@@ -66,7 +66,7 @@ export function PlaylistDetailClient({ id }: { id: string }) {
 
   if (!playlist) return null
 
-  const isOwner = user && user._id === playlist.userId
+  const isOwner = user && user.id === playlist.userId
 
   return (
     <div className="pt-4 pb-20 space-y-8 animate-in fade-in duration-500">
