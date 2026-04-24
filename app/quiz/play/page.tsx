@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { ArrowLeft, Check, X, Trophy, Music2, RotateCcw, Home } from 'lucide-react'
@@ -20,7 +20,7 @@ interface Question {
   correctValue: string
 }
 
-export default function QuizPlayPage() {
+function QuizPlayContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -313,5 +313,13 @@ export default function QuizPlayPage() {
         </AnimatePresence>
       </main>
     </div>
+  )
+}
+
+export default function QuizPlayPage() {
+  return (
+    <Suspense fallback={null}>
+      <QuizPlayContent />
+    </Suspense>
   )
 }
