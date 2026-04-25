@@ -75,7 +75,7 @@ export function FriendsActivity() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-display font-bold text-ktext-primary">Friends Activity</h2>
         <Link href="/social" className="text-sm font-body text-accent font-semibold interactive">
-          See All
+          View Full Feed
         </Link>
       </div>
 
