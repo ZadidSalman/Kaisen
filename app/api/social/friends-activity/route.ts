@@ -10,6 +10,9 @@ export async function GET(req: NextRequest) {
     if (!payload) {
       return NextResponse.json({ success: true, data: [] })
     }
+    const { searchParams } = new URL(req.url)
+    const limitParam = parseInt(searchParams.get('limit') ?? '3')
+    const fetchLimit = Math.min(limitParam, 50)
 
     // 1. Get the list of users followed by the current user
     const following = await Follow.find({ followerId: payload.userId }).lean()
@@ -25,13 +28,13 @@ export async function GET(req: NextRequest) {
     const [history, ratings] = await Promise.all([
       WatchHistory.find(queryFilter)
         .sort({ viewedAt: -1 })
-        .limit(10)
+        .limit(fetchLimit)
         .populate('userId', 'username displayName avatarUrl')
         .populate('themeId', 'slug songTitle')
         .lean(),
       Rating.find(queryFilter)
         .sort({ createdAt: -1 })
-        .limit(10)
+        .limit(fetchLimit)
         .populate('userId', 'username displayName avatarUrl')
         .populate('themeId', 'slug songTitle')
         .lean(),
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
     ]
     .filter(a => a.user.username !== 'unknown')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    .slice(0, 3) // Show only 3 latest as requested
+    .slice(0, fetchLimit)
 
     return NextResponse.json({ 
       success: true, 
