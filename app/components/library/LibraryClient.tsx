@@ -7,7 +7,7 @@ import { Search, Play, Plus, Heart, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchLibraryThemes, fetchFavoriteThemes } from '@/lib/api/themes'
 import { useAuth } from '@/hooks/useAuth'
-import { setAccessToken } from '@/lib/auth-client'
+import { setAccessToken, authFetch } from '@/lib/auth-client'
 import { getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { ThemeLibraryRow } from '@/app/components/library/ThemeLibraryRow'
 
@@ -85,15 +85,29 @@ export function LibraryClient() {
   const favoriteTracks = favoritesData?.data || []
   
   // Derive top artists
-  const artistsMap = new Map()
-  watchedThemes.forEach((t: any) => {
-    if (t.artistName && t.artistName !== 'Unknown' && !artistsMap.has(t.artistName)) {
-      artistsMap.set(t.artistName, { name: t.artistName, image: getFallbackImage(t.artistName) })
-    }
-  })
-  const topArtists = Array.from(artistsMap.values()).slice(0, 4)
+  const [topArtists, setTopArtists] = useState<any[]>([])
+  const [loadingArtists, setLoadingArtists] = useState(true)
 
-  const isLoading = isLibraryLoading || isFavoritesLoading
+  useEffect(() => {
+    async function fetchTopArtists() {
+      if (!user) {
+        setLoadingArtists(false)
+        return
+      }
+      try {
+        const res = await authFetch('/api/stats/top-artists')
+        const json = await res.json()
+        if (json.success) setTopArtists(json.data)
+      } catch (err) {
+        console.error('Failed to fetch top artists:', err)
+      } finally {
+        setLoadingArtists(false)
+      }
+    }
+    fetchTopArtists()
+  }, [user])
+
+  const isLoading = isLibraryLoading || isFavoritesLoading || loadingArtists
 
   return (
     <div className="min-h-screen bg-[#FDF8F6] dark:bg-bg-base pb-24">
@@ -153,7 +167,7 @@ export function LibraryClient() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[22px] font-display font-bold text-[#3B2C35] dark:text-white">Favorite Tracks</h2>
             <Link 
-              href={`/library/view-all/favorites?type=${filterType}`}
+              href="/favorites"
               className="text-sm font-bold text-accent hover:underline"
             >
               View Full

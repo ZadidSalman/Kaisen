@@ -18,11 +18,15 @@ export async function GET(req: NextRequest) {
     const following = await Follow.find({ followerId: payload.userId }).lean()
     let followedIds = following.map(f => f.followeeId)
 
-    // FALLBACK: If not following anyone, show global activity (excluding self)
-    const isGlobalFallback = followedIds.length === 0
-    const queryFilter = isGlobalFallback 
-      ? { userId: { $ne: payload.userId } } 
-      : { userId: { $in: followedIds } }
+    if (followedIds.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        data: [],
+        meta: { isGlobal: false } 
+      })
+    }
+
+    const queryFilter = { userId: { $in: followedIds } }
 
     // 2. Fetch recent activity (history and ratings)
     const [history, ratings] = await Promise.all([
@@ -78,7 +82,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       data: activities,
-      meta: { isGlobal: isGlobalFallback } 
+      meta: { isGlobal: false } 
     })
   } catch (err) {
     console.error('[API] GET /api/social/friends-activity:', err)

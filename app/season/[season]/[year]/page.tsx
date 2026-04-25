@@ -12,8 +12,12 @@ import { queryKeys } from '@/lib/queryKeys'
 export default function SeasonalPage() {
   const params = useParams()
   const router = useRouter()
-  const season = (params.season as string).toUpperCase()
-  const year = parseInt(params.year as string)
+  
+  const seasonRaw = params?.season as string | undefined
+  const yearRaw = params?.year as string | undefined
+  
+  const season = (seasonRaw || '').toUpperCase()
+  const year = parseInt(yearRaw || '0')
 
   const { ref, inView } = useInView()
 
@@ -27,7 +31,11 @@ export default function SeasonalPage() {
     queryKey: queryKeys.themes.seasonal(season, year),
     queryFn: ({ pageParam = 1 }) => fetchSeasonalThemes(season, year, undefined, pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.meta.hasMore ? lastPage.meta.page + 1 : undefined,
+    getNextPageParam: (lastPage: any) => {
+      if (!lastPage?.meta) return undefined
+      return lastPage.meta.hasMore ? lastPage.meta.page + 1 : undefined
+    },
+    enabled: !!season && !!year,
   })
 
   useEffect(() => {
@@ -36,7 +44,7 @@ export default function SeasonalPage() {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const themes = data?.pages.flatMap(page => page.data) ?? []
+  const themes = data?.pages.flatMap(page => page?.data ?? []) ?? []
 
   return (
     <div className="min-h-screen bg-bg-surface pb-20">

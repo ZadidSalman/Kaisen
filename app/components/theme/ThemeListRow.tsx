@@ -7,6 +7,8 @@ import { IThemeCache } from '@/types/app.types'
 import { getScoreColor, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { usePlayer } from '@/app/context/PlayerContext'
 
+import { useFavorites } from '@/hooks/useFavorites'
+
 interface ThemeListRowProps extends Partial<IThemeCache> {
   friendUsername?: string
   friendScore?: number
@@ -15,7 +17,9 @@ interface ThemeListRowProps extends Partial<IThemeCache> {
 
 export function ThemeListRow(props: ThemeListRowProps) {
   const { currentTheme, isPlaying, playTheme, togglePlay } = usePlayer()
+  const { isFavorited, toggleFavorite } = useFavorites()
   const {
+    _id,
     slug,
     artistName,
     animeCoverImage,
@@ -24,8 +28,7 @@ export function ThemeListRow(props: ThemeListRowProps) {
   const songDisplayTitle = getSongTitle(props)
   const fallback = getFallbackImage(slug || animeDisplayTitle || undefined)
 
-  // Use a mock liked state for visual match, or integrate real later
-  const [isLiked, setIsLiked] = useState(false)
+  const isLiked = _id ? isFavorited(_id) : false
 
   return (
     <Link href={`/theme/${slug}`} className="
@@ -54,7 +57,9 @@ export function ThemeListRow(props: ThemeListRowProps) {
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            setIsLiked(!isLiked)
+            if (_id && slug) {
+              toggleFavorite(_id, slug)
+            }
           }}
           className="p-2 rounded-full interactive transition-colors"
         >

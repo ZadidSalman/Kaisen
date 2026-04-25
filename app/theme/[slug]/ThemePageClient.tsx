@@ -149,14 +149,17 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
   }
 
   const handleDownload = async (format?: string) => {
-    const url = (mode === 'listen' && format !== 'mp4') ? selectedEntry.audioUrl : selectedEntry.videoSources[0]?.url
-    if (!url) return
+    const targetFormat = format || (mode === 'listen' ? 'mp3' : 'mp4')
+    const isAudioRequest = targetFormat === 'mp3'
+    const url = isAudioRequest ? selectedEntry.audioUrl : selectedEntry.videoSources[0]?.url
+
+    if (!url) {
+      toast.error(`${targetFormat.toUpperCase()} source not available for this version.`)
+      return
+    }
 
     setDownloading(true)
     try {
-      const isAudio = mode === 'listen'
-      const targetFormat = format || (isAudio ? 'mp3' : 'mp4')
-      
       const safeFilenameBase = `${animeDisplayTitle} - ${songDisplayTitle} (${theme.type}${theme.sequence || ''})`
         .replace(/[<>:"/\\|?*]/g, '')
       
@@ -257,15 +260,36 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
           <div className="space-y-6">
             <WatchListenToggle mode={mode} onModeChange={setMode} audioDisabled={!selectedEntry.audioUrl} />
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 w-full">
+              {/* Desktop Download Button */}
               <button 
                 onClick={() => handleDownload(mode === 'listen' ? 'mp3' : 'mp4')}
                 disabled={downloading}
-                className="flex-[2] h-14 flex items-center justify-center gap-3 bg-accent text-white rounded-2xl font-display font-bold text-sm tracking-widest uppercase interactive disabled:opacity-50 shadow-xl shadow-accent/25"
+                className="hidden md:flex flex-[2] h-14 items-center justify-center gap-3 bg-accent text-white rounded-2xl font-display font-bold text-sm tracking-widest uppercase interactive disabled:opacity-50 shadow-xl shadow-accent/25 px-6"
               >
                 {downloading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 <span>{mode === 'watch' ? 'Download Video' : 'Download Audio'}</span>
               </button>
+
+              {/* Mobile Download Buttons */}
+              <div className="flex md:hidden flex-[2] gap-2 min-w-0">
+                <button 
+                  onClick={() => handleDownload('mp4')}
+                  disabled={downloading}
+                  className="flex-1 h-14 flex items-center justify-center gap-1.5 bg-accent text-white rounded-2xl font-display font-bold text-[10px] tracking-wider uppercase interactive disabled:opacity-50 shadow-lg shadow-accent/20 px-2"
+                >
+                  {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span className="truncate">Video</span>
+                </button>
+                <button 
+                  onClick={() => handleDownload('mp3')}
+                  disabled={downloading}
+                  className="flex-1 h-14 flex items-center justify-center gap-1.5 bg-accent text-white rounded-2xl font-display font-bold text-[10px] tracking-wider uppercase interactive disabled:opacity-50 shadow-lg shadow-accent/20 px-2"
+                >
+                  {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span className="truncate">Audio</span>
+                </button>
+              </div>
 
               <button 
                 onClick={() => {

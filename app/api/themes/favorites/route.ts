@@ -1,24 +1,14 @@
-import { NextResponse } from 'next/server'
-import { verify } from 'jsonwebtoken'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 import { Favorite, User, ThemeCache } from '@/lib/models'
 import { connectDB } from '@/lib/db'
+import { proxy } from '@/proxy'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
-
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     await connectDB()
-    
-    const cookieStore = await cookies()
-    const token = cookieStore.get('access_token')?.value
 
-    if (!token) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const payload = verify(token, JWT_SECRET) as any
-    if (!payload || !payload.userId) {
+    const payload = proxy(req)
+    if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -36,7 +26,7 @@ export async function GET(req: Request) {
       .sort({ createdAt: -1 })
       .select('themeId')
       .lean()
-    
+
     const favoriteThemeIds = favoriteDocs.map((f: any) => f.themeId)
 
     if (favoriteThemeIds.length === 0) {
@@ -73,7 +63,63 @@ export async function GET(req: Request) {
     })
 
   } catch (err) {
-    console.error('Library favorites API error:', err)
+    console.error('Library favorites API GET error:', err)
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await connectDB()
+    const payload = proxy(req)
+    if (!payload) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { themeId, themeSlug } = await req.json()
+    if (!themeId || !themeSlug) {
+      return NextResponse.json({ success: false, error: 'themeId and themeSlug are required' }, { status: 400 })
+    }
+
+    // Check if already favorited
+    const existing = await Favorite.findOne({ userId: payload.userId, themeId })
+    if (existing) {
+      return NextResponse.json({ success: true, message: 'Already in favorites', data: existing })
+    }
+
+    const favorite = await Favorite.create({
+      userId: payload.userId,
+      themeId,
+      themeSlug
+    })
+
+    return NextResponse.json({ success: true, data: favorite })
+  } catch (err) {
+    console.error('Library favorites API POST error:', err)
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    await connectDB()
+    const payload = proxy(req)
+    if (!payload) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const themeId = searchParams.get('themeId')
+
+    if (!themeId) {
+      return NextResponse.json({ success: false, error: 'themeId is required' }, { status: 400 })
+    }
+
+    await Favorite.findOneAndDelete({ userId: payload.userId, themeId })
+
+    return NextResponse.json({ success: true, message: 'Removed from favorites' })
+  } catch (err) {
+    console.error('Library favorites API DELETE error:', err)
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }

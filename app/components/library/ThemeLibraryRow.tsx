@@ -58,13 +58,9 @@ export function ThemeLibraryRow({ theme, index = 0, isFavorite = false }: ThemeL
         <p className="text-[15px] font-display font-bold text-[#2D1420] dark:text-white truncate">{songTitle}</p>
         <p className="text-[13px] font-body text-[#986985] dark:text-ktext-tertiary truncate">{animeTitle}</p>
       </div>
-      {index % 2 === 0 ? (
-        <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:scale-110 transition-all">
-          <Play className="w-3.5 h-3.5 text-accent fill-accent ml-0.5 group-hover:text-white group-hover:fill-white transition-colors" />
-        </div>
-      ) : (
-        <Plus className="w-5 h-5 text-[#986985] flex-shrink-0 group-hover:text-accent transition-colors" strokeWidth={2} />
-      )}
+      <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:scale-110 transition-all">
+        <Play className="w-3.5 h-3.5 text-accent fill-accent ml-0.5 group-hover:text-white group-hover:fill-white transition-colors" />
+      </div>
     </Link>
   )
 }

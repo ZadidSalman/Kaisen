@@ -250,22 +250,37 @@ function RatedItemCard({ item }: { item: any }) {
 }
 
 function SocialActivityCard({ item }: { item: any }) {
+  if (!item) return null
+  
+  const actor = item.actorId || { displayName: 'Someone', username: 'unknown' }
+  const targetName = item.entityMeta?.targetName || 'a theme'
+
+  const getActionText = () => {
+    switch (item.type) {
+      case 'follow': return 'started following you'
+      case 'theme_favorited': return 'favorited your theme'
+      case 'theme_rated': return `rated ${targetName}`
+      case 'comment': return `replied to your comment on ${targetName}`
+      case 'rating_like': return `liked your rating on ${targetName}`
+      case 'playlist_like': return `liked your playlist ${targetName}`
+      default: return 'interacted with your profile'
+    }
+  }
+
   return (
-    <div className="bg-bg-surface rounded-[32px] p-5 border border-border-subtle flex gap-4 interactive group">
-       <div className="w-12 h-12 rounded-full bg-accent-mint/10 flex items-center justify-center flex-shrink-0">
-          <MessageSquare className="w-5 h-5 text-accent-mint" />
-       </div>
-       <div className="flex-1 min-w-0">
-          <p className="text-sm font-body text-ktext-primary leading-snug">
-             <span className="font-black">Shinji</span> replied to your comment on <span className="text-accent font-bold">Cruel Angel&apos;s Thesis</span>
-          </p>
-          <p className="text-xs font-body text-ktext-tertiary mt-2 line-clamp-2 italic">
-             &quot;Totally agree, the brass section in the chorus is unmatched.&quot;
-          </p>
-          <p className="text-[10px] font-body font-bold text-ktext-disabled mt-3 uppercase tracking-wider">
-             2 hours ago
-          </p>
-       </div>
+    <div className="flex items-center gap-3 p-3 bg-bg-surface rounded-2xl border border-border-subtle group hover:border-accent/30 transition-all">
+      <div className="w-10 h-10 rounded-xl bg-bg-elevated flex items-center justify-center shrink-0">
+        {actor.avatarUrl ? (
+          <img src={actor.avatarUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+        ) : (
+          <span className="text-accent font-black">{actor.displayName?.[0] || '?'}</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-body text-ktext-primary truncate">
+          <span className="font-black">{actor.displayName}</span> {getActionText()}
+        </p>
+      </div>
     </div>
   )
 }

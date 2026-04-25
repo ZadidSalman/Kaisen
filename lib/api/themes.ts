@@ -37,3 +37,18 @@ export async function fetchFavoriteThemes(type?: 'OP' | 'ED', page = 1, limit = 
   const res = await authFetch(`/api/themes/favorites?${params}`)
   return res.json()
 }
+
+export async function addFavoriteTheme(themeId: string, themeSlug: string) {
+  const res = await authFetch('/api/themes/favorites', {
+    method: 'POST',
+    body: JSON.stringify({ themeId, themeSlug })
+  })
+  return res.json()
+}
+
+export async function removeFavoriteTheme(themeId: string) {
+  const res = await authFetch(`/api/themes/favorites?themeId=${themeId}`, {
+    method: 'DELETE'
+  })
+  return res.json()
+}

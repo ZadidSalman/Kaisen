@@ -23,8 +23,12 @@ export function ArtistPageClient({ artist, themes }: ArtistPageClientProps) {
   const router = useRouter()
   const [isFollowing, setIsFollowing] = useState(false)
   
-  // Mock monthly listeners for design match
-  const monthlyListeners = "12.4M"
+  const totalActivity = themes.reduce((acc, t) => acc + (t.totalWatches || 0) + (t.totalListens || 0), 0)
+  const monthlyListeners = totalActivity > 1000000 
+    ? `${(totalActivity / 1000000).toFixed(1)}M` 
+    : totalActivity > 1000 
+      ? `${(totalActivity / 1000).toFixed(1)}K` 
+      : totalActivity.toString()
 
   const bannerImage = artist.imageUrl || `https://picsum.photos/seed/${artist.slug}/1200/600`
 
