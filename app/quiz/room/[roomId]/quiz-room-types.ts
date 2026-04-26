@@ -59,3 +59,16 @@ export interface QuizRoomData {
   settings: RoomSettings
   rounds: any[]
 }
+
+export interface RankUpdateData {
+  userId: string
+  rpBefore: number
+  rpAfter: number
+  rpChange: number
+  streakBonus: number
+  tierBefore: string
+  tierAfter: string
+  promoted: boolean
+  demoted: boolean
+  newStreak: number
+}

@@ -567,3 +567,107 @@ QuizInviteSchema.index({ toUserId: 1, status: 1 })
 QuizInviteSchema.index({ roomId: 1, toUserId: 1 })
 
 export const QuizInvite = mongoose.models.QuizInvite || mongoose.model('QuizInvite', QuizInviteSchema)
+
+// --- Rank System Schemas ---
+
+export type RankTier = 'academy' | 'genin' | 'chunin' | 'jonin' | 'anbu' | 'kage'
+
+const UserRankSchema = new Schema({
+  userId: { type: String, required: true, unique: true },
+
+  rp: { type: Number, default: 0 },
+  tier: { type: String, enum: ['academy', 'genin', 'chunin', 'jonin', 'anbu', 'kage'], default: 'academy' },
+  division: { type: Number, default: null },
+  tierFloor: { type: Number, default: 0 },
+
+  currentWinStreak: { type: Number, default: 0 },
+  longestWinStreak: { type: Number, default: 0 },
+
+  stats: {
+    totalGames: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+    draws: { type: Number, default: 0 },
+    winRate: { type: Number, default: 0 },
+    peakRP: { type: Number, default: 0 },
+    peakTier: { type: String, enum: ['academy', 'genin', 'chunin', 'jonin', 'anbu', 'kage'], default: 'academy' },
+  },
+
+  season: {
+    seasonId: { type: String, default: 'all-time' },
+    seasonRP: { type: Number, default: 0 },
+    seasonWins: { type: Number, default: 0 },
+    seasonLosses: { type: Number, default: 0 },
+    seasonPlacement: { type: Number, default: null },
+  },
+}, { timestamps: true })
+
+UserRankSchema.index({ rp: -1 })
+UserRankSchema.index({ 'season.seasonRP': -1 })
+
+export const UserRank = mongoose.models.UserRank || mongoose.model('UserRank', UserRankSchema)
+
+const RankHistorySchema = new Schema({
+  userId: { type: String, required: true },
+  roomId: { type: String, required: true },
+  roomType: { type: String, enum: ['party', 'duel'], required: true },
+  playedAt: { type: Date, required: true },
+
+  placement: { type: Number, required: true },
+  totalPlayers: { type: Number, required: true },
+
+  rpBefore: { type: Number, required: true },
+  rpAfter: { type: Number, required: true },
+  rpChange: { type: Number, required: true },
+  streakBonus: { type: Number, required: true },
+  winStreakAtTime: { type: Number, required: true },
+
+  tierBefore: { type: String, required: true },
+  tierAfter: { type: String, required: true },
+  promoted: { type: Boolean, default: false },
+  demoted: { type: Boolean, default: false },
+}, { timestamps: false })
+
+RankHistorySchema.index({ userId: 1, playedAt: -1 })
+
+export const RankHistory = mongoose.models.RankHistory || mongoose.model('RankHistory', RankHistorySchema)
+
+const LeaderboardSnapshotSchema = new Schema({
+  scope: { type: String, enum: ['global', 'weekly', 'monthly'], required: true },
+  seasonId: { type: String, required: true },
+  computedAt: { type: Date, required: true },
+
+  entries: [{
+    rank: { type: Number, required: true },
+    userId: { type: String, required: true },
+    username: { type: String, required: true },
+    avatar: { type: String, default: null },
+    tier: { type: String, required: true },
+    division: { type: Number, default: null },
+    rp: { type: Number, required: true },
+    wins: { type: Number, required: true },
+    winRate: { type: Number, required: true },
+    currentWinStreak: { type: Number, required: true },
+  }]
+}, { timestamps: false })
+
+LeaderboardSnapshotSchema.index({ scope: 1, seasonId: 1 }, { unique: true })
+
+export const LeaderboardSnapshot = mongoose.models.LeaderboardSnapshot || mongoose.model('LeaderboardSnapshot', LeaderboardSnapshotSchema)
+
+const SeasonSchema = new Schema({
+  seasonId: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['weekly', 'monthly'], required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  status: { type: String, enum: ['active', 'ended'], default: 'active' },
+  rewardsTier: {
+    top1Percent: { type: String, default: null },
+    top10Percent: { type: String, default: null },
+    top25Percent: { type: String, default: null },
+  }
+}, { timestamps: true })
+
+SeasonSchema.index({ type: 1, status: 1 })
+
+export const Season = mongoose.models.Season || mongoose.model('Season', SeasonSchema)

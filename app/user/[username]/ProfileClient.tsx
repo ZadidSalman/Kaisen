@@ -22,7 +22,8 @@ export function ProfileClient({ initialData }: { initialData: any }) {
   const [data, setData] = useState<any>({
     activity: [],
     history: [],
-    ratings: []
+    ratings: [],
+    rank: null
   })
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
@@ -36,22 +37,25 @@ export function ProfileClient({ initialData }: { initialData: any }) {
     async function fetchTabData() {
       setLoading(true)
       try {
-        const [activityRes, historyRes, ratingsRes] = await Promise.all([
+        const [activityRes, historyRes, ratingsRes, rankRes] = await Promise.all([
           fetch(`/api/users/${initialData.username}/activity`),
           fetch(`/api/users/${initialData.username}/history`),
-          fetch(`/api/users/${initialData.username}/ratings`)
+          fetch(`/api/users/${initialData.username}/ratings`),
+          fetch(`/api/rank/${initialData.id}`)
         ])
         
-        const [activity, history, ratings] = await Promise.all([
+        const [activity, history, ratings, rankData] = await Promise.all([
           activityRes.json(),
           historyRes.json(),
-          ratingsRes.json()
+          ratingsRes.json(),
+          rankRes.json()
         ])
 
         setData({
           activity: activity.success ? activity.data : [],
           history: history.success ? history.data : [],
-          ratings: ratings.success ? ratings.data : []
+          ratings: ratings.success ? ratings.data : [],
+          rank: rankData.success ? rankData.rank : null
         })
 
         // Simple heuristic for stats if not provided
@@ -131,20 +135,24 @@ export function ProfileClient({ initialData }: { initialData: any }) {
         </div>
 
         {/* Achievement Banner */}
-        <div className="w-full mt-6 bg-gradient-to-r from-accent-container/40 to-transparent rounded-[32px] p-5 flex items-center gap-4 border border-accent/10 relative overflow-hidden group interactive">
-           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Flame className="w-16 h-16 text-accent" />
-           </div>
-           <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20">
-              <Flame className="w-7 h-7 text-white fill-current" />
-           </div>
-           <div className="min-w-0">
-              <h3 className="text-lg font-display font-black text-ktext-primary">Shonen Junkie</h3>
-              <p className="text-xs font-body text-ktext-tertiary font-bold">
-                 Rank: Diamond • <span className="text-accent">Top 5% Rater</span>
-              </p>
-           </div>
-        </div>
+        {data.rank && (
+          <div className="w-full mt-6 bg-gradient-to-r from-accent-container/40 to-transparent rounded-[32px] p-5 flex items-center gap-4 border border-accent/10 relative overflow-hidden group interactive">
+             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Trophy className="w-16 h-16 text-accent" />
+             </div>
+             <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20">
+                <Trophy className="w-7 h-7 text-white fill-current" />
+             </div>
+             <div className="min-w-0">
+                <h3 className="text-lg font-display font-black text-ktext-primary uppercase tracking-tight">
+                  {data.rank.tier} {data.rank.division ? ` ${'I'.repeat(4 - data.rank.division)}` : ''}
+                </h3>
+                <p className="text-xs font-body text-ktext-tertiary font-bold mt-0.5">
+                   {data.rank.rp} RP • <span className="text-accent">{Math.round((data.rank.stats?.winRate || 0) * 100)}% Win Rate</span>
+                </p>
+             </div>
+          </div>
+        )}
 
         {/* Tab Controls */}
         <div className="w-full mt-10 border-b border-border-subtle flex">

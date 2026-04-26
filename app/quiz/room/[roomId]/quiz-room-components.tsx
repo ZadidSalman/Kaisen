@@ -2,7 +2,7 @@
 import { motion } from 'motion/react'
 import { Crown, Check, Clock, Lock } from 'lucide-react'
 import Image from 'next/image'
-import { Player, RoundAnswer, RoundReveal } from './quiz-room-types'
+import { Player, RoundAnswer, RoundReveal, RankUpdateData } from './quiz-room-types'
 import { getFallbackAvatar } from '@/lib/utils'
 
 export function LiveScoreboard({ players, myUserId, roundAnswers }: {
@@ -107,10 +107,11 @@ export function RevealView({ reveal, myUserId, onNext, isHost, isLastRound, curr
   )
 }
 
-export function ResultsView({ players, myUserId, onLeave }: {
+export function ResultsView({ players, myUserId, onLeave, rankUpdate }: {
   players: Player[]
   myUserId: string
   onLeave: () => void
+  rankUpdate?: RankUpdateData | null
 }) {
   const sorted = [...players].sort((a, b) => b.totalScore - a.totalScore)
   const winner = sorted[0]
@@ -127,6 +128,31 @@ export function ResultsView({ players, myUserId, onLeave }: {
         <p className="text-xs font-bold text-ktext-tertiary uppercase tracking-widest mb-1">Game Over</p>
         <p className="text-3xl font-display font-black text-accent">{winner?.username} wins!</p>
       </div>
+
+      {rankUpdate && (
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+          className="w-full bg-white rounded-3xl p-5 shadow-sm border border-pink-100 flex flex-col items-center gap-2">
+          <p className="text-xs font-bold text-ktext-tertiary uppercase tracking-widest">Rank Update</p>
+          <div className="flex items-center gap-4 w-full justify-center">
+            <div className="text-center">
+              <p className="font-display font-black text-lg capitalize">{rankUpdate.tierBefore}</p>
+              <p className="text-sm font-mono text-gray-500">{rankUpdate.rpBefore} RP</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className={`text-xl font-black ${rankUpdate.rpChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {rankUpdate.rpChange >= 0 ? '+' : ''}{rankUpdate.rpChange}
+              </span>
+              {rankUpdate.streakBonus > 0 && <span className="text-[10px] text-orange-500 font-bold bg-orange-100 px-2 py-0.5 rounded-full mt-1">Streak +{rankUpdate.streakBonus}</span>}
+            </div>
+            <div className="text-center">
+              <p className="font-display font-black text-lg capitalize text-accent">{rankUpdate.tierAfter}</p>
+              <p className="text-sm font-mono text-accent">{rankUpdate.rpAfter} RP</p>
+            </div>
+          </div>
+          {rankUpdate.promoted && <p className="text-sm font-bold text-green-500 mt-2">🎉 Promoted!</p>}
+          {rankUpdate.demoted && <p className="text-sm font-bold text-red-500 mt-2">📉 Demoted</p>}
+        </motion.div>
+      )}
 
       <div className="w-full space-y-3">
         {sorted.map((p, i) => (

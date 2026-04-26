@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Menu, Search, X, Home, Trophy, Bell, User as UserIcon, Settings, Library, Users, ListMusic, Heart } from 'lucide-react'
+import { Menu, Search, X, Home, Trophy, Bell, User as UserIcon, Settings, Library, Users, ListMusic, Heart, Medal } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'
 import { getFallbackAvatar } from '@/lib/utils'
@@ -23,6 +23,7 @@ export function AppHeader() {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/quiz/multiplayer', icon: Trophy, label: 'Lobby' },
+    { path: '/leaderboard', icon: Medal, label: 'Leaderboard' },
     { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/playlists', icon: ListMusic, label: 'Playlist' },
     { path: '/library?tab=favorites', icon: Heart, label: 'Favorite' },
@@ -121,8 +122,12 @@ export function AppHeader() {
 
               {user && (
                 <div className="p-6 border-b border-white/5 bg-gradient-to-br from-white/5 to-transparent">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-[#be185d] ring-offset-2 ring-offset-bg-surface relative shadow-lg">
+                  <Link 
+                    href={`/user/${user.username}`} 
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-4 group cursor-pointer"
+                  >
+                    <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-[#be185d] ring-offset-2 ring-offset-bg-surface relative shadow-lg group-hover:scale-105 transition-transform">
                       <Image 
                         src={user.avatarUrl ?? getFallbackAvatar(user.username)} 
                         fill
@@ -132,10 +137,10 @@ export function AppHeader() {
                       />
                     </div>
                     <div>
-                      <p className="font-display font-bold text-lg text-ktext-primary leading-tight">{user.displayName}</p>
-                      <p className="text-sm font-body text-ktext-secondary">@{user.username}</p>
+                      <p className="font-display font-bold text-lg text-ktext-primary leading-tight group-hover:text-accent transition-colors">{user.displayName}</p>
+                      <p className="text-sm font-body text-ktext-secondary group-hover:text-accent/80 transition-colors">@{user.username}</p>
                     </div>
-                  </div>
+                  </Link>
                 </div>
               )}
 

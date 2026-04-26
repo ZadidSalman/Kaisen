@@ -2,7 +2,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Search, Trophy, Bell, User, Settings, Library, Users, ListMusic, Heart } from 'lucide-react'
+import { Home, Search, Trophy, Bell, User, Settings, Library, Users, ListMusic, Heart, Medal } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { getFallbackAvatar } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ export function NavigationRail({ className }: { className?: string }) {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/quiz', icon: Trophy, label: 'Quiz' },
+    { path: '/leaderboard', icon: Medal, label: 'Leaderboard' },
     { path: '/library', icon: Library, label: 'Library' },
     { path: '/favorites', icon: Heart, label: 'Favorites' },
     { path: '/playlists', icon: ListMusic, label: 'Playlists' },
@@ -60,8 +61,8 @@ export function NavigationRail({ className }: { className?: string }) {
         </Link>
         
         {user && (
-          <div className="px-4 py-2 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-accent-mint relative">
+          <Link href={`/user/${user.username}`} className="px-4 py-2 flex items-center gap-3 cursor-pointer group">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-accent-mint relative group-hover:border-accent transition-colors">
               <Image 
                 src={user.avatarUrl ?? getFallbackAvatar(user.username)} 
                 fill
@@ -72,10 +73,10 @@ export function NavigationRail({ className }: { className?: string }) {
               />
             </div>
             <div className="hidden lg:block min-w-0">
-              <p className="text-sm font-body font-semibold text-ktext-primary truncate">{user.displayName}</p>
+              <p className="text-sm font-body font-semibold text-ktext-primary truncate group-hover:text-accent transition-colors">{user.displayName}</p>
               <p className="text-xs font-body text-ktext-tertiary truncate">@{user.username}</p>
             </div>
-          </div>
+          </Link>
         )}
       </div>
     </nav>

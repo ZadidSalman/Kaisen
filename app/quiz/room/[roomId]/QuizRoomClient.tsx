@@ -10,7 +10,7 @@ import { pusherClient } from '@/lib/pusher-client'
 import { getFallbackAvatar } from '@/lib/utils'
 import { toast } from 'sonner'
 import { RevealView, ResultsView, LiveScoreboard } from './quiz-room-components'
-import type { QuizRoomData, Player, RoundAnswer, RoundReveal, GamePhase } from './quiz-room-types'
+import type { QuizRoomData, Player, RoundAnswer, RoundReveal, GamePhase, RankUpdateData } from './quiz-room-types'
 
 export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomData }) {
   const router = useRouter()
@@ -26,6 +26,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   const [timeLimitSeconds, setTimeLimitSeconds] = useState(room.settings.timeLimitSeconds || 30)
   const [roundAnswers, setRoundAnswers] = useState<RoundAnswer[]>([])
   const [reveal, setReveal] = useState<RoundReveal | null>(null)
+  const [rankUpdate, setRankUpdate] = useState<RankUpdateData | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [currentRound, setCurrentRound] = useState(initialRoom.currentRound || 0)
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false)
@@ -281,6 +282,12 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       setPhase(data.gameOver ? 'results' : 'reveal')
     })
 
+    channel.bind('room:rank-updated', (data: any) => {
+      if (data.userId === myUserId) {
+        setRankUpdate(data)
+      }
+    })
+
     return () => {
       channel.unbind_all()
       pusherClient.unsubscribe(channelName)
@@ -454,7 +461,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
             <ArrowLeft className="w-5 h-5" />
           </button>
         </header>
-        <ResultsView players={finalPlayers} myUserId={myUserId} onLeave={handleLeave} />
+        <ResultsView players={finalPlayers} myUserId={myUserId} onLeave={handleLeave} rankUpdate={rankUpdate} />
       </div>
     )
   }
