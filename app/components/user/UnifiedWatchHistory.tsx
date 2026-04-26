@@ -4,13 +4,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search, X, Loader2, AlertCircle, RefreshCcw, ExternalLink } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
-import { 
-  NormalizedWatchEntry, 
-  normalizeAniListEntry, 
-  normalizeLocalEntry, 
-  mergeWatchHistory 
-} from '@/lib/history-utils'
+import { NormalizedWatchEntry } from '@/lib/history-utils'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -21,13 +15,11 @@ interface UnifiedWatchHistoryProps {
 const PAGE_SIZE = 20;
 
 export function UnifiedWatchHistory({ username }: UnifiedWatchHistoryProps) {
-  const { user: currentUser } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
-  const isOwnProfile = currentUser?.username === username
 
   const { 
-    data: mergedHistory, 
+    data,
     isLoading, 
     isError, 
     error, 
@@ -36,70 +28,37 @@ export function UnifiedWatchHistory({ username }: UnifiedWatchHistoryProps) {
   } = useQuery({
     queryKey: ['watch-history', username],
     queryFn: async () => {
-      // 1. Fetch Local History
-      const localRes = await fetch(`/api/users/${username}/history`)
-      const localData = await localRes.json()
-      const localEntries = localData.success ? localData.data.map(normalizeLocalEntry) : []
+      const response = await fetch(`/api/users/${username}/history?includeMerged=1`, {
+        credentials: 'include',
+      })
 
-      // 2. Fetch AniList History (if it's the current user's profile and they have AniList)
-      let remoteEntries: NormalizedWatchEntry[] = []
-      if (isOwnProfile && currentUser?.anilist?.accessToken) {
-        try {
-          const anilistRes = await fetch('https://graphql.anilist.co', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${currentUser.anilist.accessToken}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              query: `
-                query ($userId: Int) {
-                  MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
-                    lists {
-                      entries {
-                        updatedAt
-                        media {
-                          id
-                          title {
-                            romaji
-                            english
-                          }
-                          coverImage {
-                            large
-                          }
-                          episodes
-                        }
-                      }
-                    }
-                  }
-                }
-              `,
-              variables: { userId: currentUser.anilist.userId }
-            }),
-          })
-          const anilistData = await anilistRes.json()
-          if (anilistData.data?.MediaListCollection?.lists) {
-            remoteEntries = anilistData.data.MediaListCollection.lists.flatMap((list: any) => 
-              list.entries.map(normalizeAniListEntry)
-            )
-          }
-        } catch (err) {
-          console.error('Failed to fetch AniList history:', err)
-          // We don't want to fail the whole query if AniList fails
-        }
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to load watch history')
       }
 
-      // 3. Merge and deduplicate
-      return mergeWatchHistory(localEntries, remoteEntries)
+      return {
+        entries: (result.data ?? []) as NormalizedWatchEntry[],
+        meta: result.meta ?? {
+          total: 0,
+          localCount: 0,
+          remoteCount: 0,
+          anilistIncluded: false,
+          anilistConnected: false,
+          anilistError: null,
+        },
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     gcTime: 10 * 60 * 1000,   // 10 minutes garbage collection
     retry: 2,
   })
 
+  const mergedHistory = data?.entries ?? []
+  const meta = data?.meta
+
   const filteredHistory = useMemo(() => {
-    if (!mergedHistory) return []
     return mergedHistory.filter(entry => 
       entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       entry.animeTitle?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -145,6 +104,32 @@ export function UnifiedWatchHistory({ username }: UnifiedWatchHistoryProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-2 rounded-[28px] border border-border-subtle bg-bg-surface/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-base font-display font-black text-ktext-primary uppercase tracking-tight">
+            Combined Watch History
+          </h3>
+          <p className="text-xs font-body text-ktext-secondary">
+            {meta?.total ?? mergedHistory.length} total entries
+            {' • '}
+            Local {meta?.localCount ?? 0}
+            {' • '}
+            AniList {meta?.remoteCount ?? 0}
+          </p>
+        </div>
+        {meta?.anilistConnected && !meta?.anilistIncluded ? (
+          <p className="text-xs font-body text-ktext-tertiary">
+            AniList entries are only shown on your own profile.
+          </p>
+        ) : null}
+      </div>
+
+      {meta?.anilistError ? (
+        <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-sm font-body text-amber-200">
+          AniList history could not be loaded right now. Local history is still shown.
+        </div>
+      ) : null}
+
       {/* Search Bar */}
       <div className="relative group">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">

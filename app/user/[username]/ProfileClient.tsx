@@ -40,7 +40,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
       try {
         const [activityRes, historyRes, ratingsRes, rankRes] = await Promise.all([
           fetch(`/api/users/${initialData.username}/activity`),
-          fetch(`/api/users/${initialData.username}/history`),
+          fetch(`/api/users/${initialData.username}/history?includeMerged=1`, { credentials: 'include' }),
           fetch(`/api/users/${initialData.username}/ratings`),
           fetch(`/api/rank/${initialData.id}`)
         ])
@@ -62,7 +62,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
         // Simple heuristic for stats if not provided
         setStats(prev => ({
           ...prev,
-          totalWatched: history.success ? history.data.length : 0,
+          totalWatched: history.success ? (history.meta?.total ?? history.data.length) : 0,
           totalRated: ratings.success ? ratings.data.length : 0
         }))
 

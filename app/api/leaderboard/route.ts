@@ -15,19 +15,22 @@ export async function GET(req: NextRequest) {
       { $sort: { rp: -1 } },
       { $limit: 100 },
       {
-        $addFields: {
-          userObjectId: { $toObjectId: "$userId" }
-        }
-      },
-      {
         $lookup: {
           from: 'users',
-          localField: 'userObjectId',
-          foreignField: '_id',
+          let: { rankUserId: '$userId' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [{ $toString: '$_id' }, '$$rankUserId']
+                }
+              }
+            }
+          ],
           as: 'user'
         }
       },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $unwind: '$user' },
       {
         $project: {
           _id: 1,
