@@ -1,7 +1,8 @@
 'use client'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
-import { Pencil, Settings, ChevronLeft, Star, Clock, Users, UserPlus, MessageSquare, Heart, Trophy, Flame, Activity } from 'lucide-react'
+import { UnifiedWatchHistory } from '@/app/components/user/UnifiedWatchHistory'
+import { Pencil, Settings, ChevronLeft, Star, Clock, Users, UserPlus, MessageSquare, Heart, Trophy, Flame, Activity, Loader2 as LoaderIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCount, getScoreColor, getScoreLabel, getFallbackAvatar, getSongTitle, getAnimeTitle } from '@/lib/utils'
@@ -180,7 +181,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
            <AnimatePresence mode="wait">
               {loading ? (
                  <div className="flex justify-center py-12">
-                    <Loader2 className="w-8 h-8 text-accent animate-spin" />
+                    <LoaderIcon className="w-8 h-8 text-accent animate-spin" />
                  </div>
               ) : (
                  <motion.div
@@ -197,11 +198,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
                           ))
                        ) : <EmptyState message="No ratings yet" />
                     ) : (
-                       data.history.length > 0 ? (
-                          data.history.map((item: any) => (
-                             <ThemeListRow key={item._id} {...item.themeId} />
-                          ))
-                       ) : <EmptyState message="Nothing watched yet" />
+                       <UnifiedWatchHistory username={initialData.username} />
                     )}
                  </motion.div>
               )}
@@ -310,6 +307,3 @@ function EmptyState({ message }: { message: string }) {
   )
 }
 
-function Loader2({ className }: { className?: string }) {
-  return <Activity className={`animate-spin ${className}`} />
-}

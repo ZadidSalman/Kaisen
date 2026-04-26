@@ -3,28 +3,44 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Search, Play, Plus, Heart, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchLibraryThemes, fetchFavoriteThemes } from '@/lib/api/themes'
 import { useAuth } from '@/hooks/useAuth'
 import { setAccessToken, authFetch } from '@/lib/auth-client'
-import { getFallbackImage, getAnimeTitle, getSongTitle, getFallbackAvatar } from '@/lib/utils'
+import { getFallbackAvatar } from '@/lib/utils'
 import { ThemeLibraryRow } from '@/app/components/library/ThemeLibraryRow'
 
 export function LibraryClient() {
   const { user, refreshUser } = useAuth()
   const [isConnecting, setIsConnecting] = useState(false)
   const [filterType, setFilterType] = useState<'OP' | 'ED'>('OP')
+  const [topArtists, setTopArtists] = useState<any[]>([])
+  const [loadingArtists, setLoadingArtists] = useState(true)
+  const [artistsError, setArtistsError] = useState<string | null>(null)
+  const [artistFetchTrigger, setArtistFetchTrigger] = useState(0)
 
   // Fetch library themes (Watched Anime)
-  const { data: libraryData, isLoading: isLibraryLoading, refetch: refetchLibrary } = useQuery({
+  const {
+    data: libraryData,
+    isLoading: isLibraryLoading,
+    isError: isLibraryError,
+    error: libraryError,
+    refetch: refetchLibrary
+  } = useQuery({
     queryKey: ['watched-themes', filterType],
     queryFn: () => fetchLibraryThemes(filterType, 1, 3),
     enabled: !!user,
   })
 
   // Fetch favorite themes
-  const { data: favoritesData, isLoading: isFavoritesLoading, refetch: refetchFavorites } = useQuery({
+  const {
+    data: favoritesData,
+    isLoading: isFavoritesLoading,
+    isError: isFavoritesError,
+    error: favoritesError,
+    refetch: refetchFavorites
+  } = useQuery({
     queryKey: ['favorites-themes', filterType],
     queryFn: () => fetchFavoriteThemes(filterType, 1, 3),
     enabled: !!user,
@@ -62,6 +78,46 @@ export function LibraryClient() {
     }
   }
 
+  const watchedThemes = libraryData?.data || []
+  const favoriteTracks = favoritesData?.data || []
+
+  useEffect(() => {
+    async function fetchTopArtists() {
+      setArtistsError(null)
+      if (!user) {
+        setTopArtists([])
+        setLoadingArtists(false)
+        return
+      }
+      setLoadingArtists(true)
+      try {
+        const res = await authFetch('/api/stats/top-artists')
+        const json = await res.json()
+        if (json.success) {
+          setTopArtists(json.data)
+        } else {
+          setArtistsError('Failed to load top artists.')
+        }
+      } catch (err) {
+        console.error('Failed to fetch top artists:', err)
+        setArtistsError(err instanceof Error ? err.message : 'Failed to load top artists.')
+      } finally {
+        setLoadingArtists(false)
+      }
+    }
+    fetchTopArtists()
+  }, [user, artistFetchTrigger])
+
+  const isLoading = isLibraryLoading || isFavoritesLoading || loadingArtists
+  const hasDataError = isLibraryError || isFavoritesError || !!artistsError
+  const libraryErrorMessage = libraryError instanceof Error ? libraryError.message : 'Failed to load watched anime.'
+  const favoritesErrorMessage = favoritesError instanceof Error ? favoritesError.message : 'Failed to load favorite tracks.'
+
+  const handleRetryAll = async () => {
+    await Promise.all([refetchLibrary(), refetchFavorites()])
+    setArtistFetchTrigger((prev) => prev + 1)
+  }
+
   // Authentication placeholder
   if (!user) {
     return (
@@ -80,38 +136,32 @@ export function LibraryClient() {
       </div>
     )
   }
-  
-  const watchedThemes = libraryData?.data || []
-  const favoriteTracks = favoritesData?.data || []
-  
-  // Derive top artists
-  const [topArtists, setTopArtists] = useState<any[]>([])
-  const [loadingArtists, setLoadingArtists] = useState(true)
-
-  useEffect(() => {
-    async function fetchTopArtists() {
-      if (!user) {
-        setLoadingArtists(false)
-        return
-      }
-      try {
-        const res = await authFetch('/api/stats/top-artists')
-        const json = await res.json()
-        if (json.success) setTopArtists(json.data)
-      } catch (err) {
-        console.error('Failed to fetch top artists:', err)
-      } finally {
-        setLoadingArtists(false)
-      }
-    }
-    fetchTopArtists()
-  }, [user])
-
-  const isLoading = isLibraryLoading || isFavoritesLoading || loadingArtists
 
   return (
     <div className="min-h-screen bg-[#FDF8F6] dark:bg-bg-base pb-24">
       <div className="px-6 space-y-8 mt-4 pt-4">
+        {hasDataError && (
+          <div
+            role="alert"
+            className="rounded-[20px] border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div className="space-y-1">
+                {isLibraryError && <p>{libraryErrorMessage}</p>}
+                {isFavoritesError && <p>{favoritesErrorMessage}</p>}
+                {artistsError && <p>{artistsError}</p>}
+              </div>
+            </div>
+            <button
+              onClick={handleRetryAll}
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-red-400/40 px-4 py-2 font-bold hover:bg-red-500/10"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Retry
+            </button>
+          </div>
+        )}
         {/* Watched Anime Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
