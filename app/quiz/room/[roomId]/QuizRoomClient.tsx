@@ -32,6 +32,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const currentRoundRef = useRef(initialRoom.currentRound || 0)
 
   const [audio] = useState(() => {
     if (typeof Audio !== 'undefined') {
@@ -81,6 +82,19 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }, [])
+
+  const upsertRoundAnswer = useCallback((answer: RoundAnswer) => {
+    setRoundAnswers(prev => {
+      const existingIndex = prev.findIndex(item => item.userId === answer.userId)
+      if (existingIndex === -1) {
+        return [...prev, answer]
+      }
+
+      const next = [...prev]
+      next[existingIndex] = { ...next[existingIndex], ...answer }
+      return next
+    })
   }, [])
 
   const handleTimeout = useCallback(async () => {
@@ -217,6 +231,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
     channel.bind('room:round-started', (data: any) => {
       const limit = data.timeLimitSeconds ?? 30
       const serverStartedAt = new Date(data.startedAt).getTime()
+      currentRoundRef.current = data.round
       setTimeLimitSeconds(limit)
       setTimeLeft(limit) // Reset display immediately
       setOptions(data.theme.options ?? [])
@@ -224,38 +239,43 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       setSelected(null)
       setAnswered(false)
       setAutoLocked(false)
+      setSubmitting(false)
       setRoundAnswers([])
+      setReveal(null)
       setCurrentRound(data.round)
       setPhase('game')
       // Load audio and start timer 1s after playback begins
       loadAndPlayAudio(data.theme.videoUrl, serverStartedAt, limit)
     })
     channel.bind('room:player-answered', (data: any) => {
-      if (data.userId !== myUserId && data.autoLocked && !answered) {
-        // A different player got auto-locked — UI update only
+      if (typeof data.round === 'number' && data.round !== currentRoundRef.current) {
+        return
       }
+
       if (data.userId === myUserId && data.autoLocked) {
+        setSelected(null)
         setAutoLocked(true)
         setAnswered(true)
         stopTimer()
         toast.warning('You were auto-locked! 🔒')
       }
-      setRoundAnswers(prev => {
-        const exists = prev.find(a => a.userId === data.userId)
-        if (exists) return prev
-        return [...prev, {
-          userId: data.userId,
-          submittedAnswer: '',
-          correct: data.correct,
-          secondsRemaining: 0,
-          baseScore: data.totalScoreGained,
-          bonusScore: data.bonusScore ?? 0,
-          totalScoreGained: data.totalScoreGained,
-          autoLocked: data.autoLocked ?? false,
-        }]
+
+      upsertRoundAnswer({
+        userId: data.userId,
+        submittedAnswer: data.submittedAnswer ?? '',
+        correct: Boolean(data.correct),
+        secondsRemaining: 0,
+        baseScore: data.totalScoreGained ?? 0,
+        bonusScore: data.bonusScore ?? 0,
+        totalScoreGained: data.totalScoreGained ?? 0,
+        autoLocked: data.autoLocked ?? false,
       })
     })
     channel.bind('room:round-ended', (data: any) => {
+      if (typeof data.round === 'number' && data.round !== currentRoundRef.current) {
+        return
+      }
+
       stopTimer()
       // Fade out audio
       if (audioRef.current) {
@@ -272,6 +292,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
         }, 80)
       }
       setRoom(prev => ({ ...prev, players: data.players ?? prev.players, status: data.gameOver ? 'ended' : prev.status }))
+      setRoundAnswers(data.answers ?? [])
       setReveal({
         correctAnswer: data.correctAnswer,
         answers: data.answers ?? [],
@@ -297,7 +318,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
         audioRef.current.src = ''
       }
     }
-  }, [user?.id, room._id, myUserId, loadAndPlayAudio, startTimer, stopTimer])
+  }, [user?.id, room._id, myUserId, loadAndPlayAudio, startTimer, stopTimer, upsertRoundAnswer])
 
   // Heartbeat Effect
   useEffect(() => {
@@ -340,22 +361,61 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
   const handleSelectOption = async (option: string) => {
     if (answered || autoLocked || submitting) return
+    const answerRound = currentRoundRef.current
     setSelected(option)
     setAnswered(true)
     setSubmitting(true)
     stopTimer()
     try {
-      await authFetch('/api/quiz/room/answer', {
+      const res = await authFetch('/api/quiz/room/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: room._id, submittedAnswer: option }),
       })
+      const data = await res.json()
+
+      if (answerRound !== currentRoundRef.current) {
+        return
+      }
+
+      if (data.autoLocked) {
+        setSelected(null)
+        setAutoLocked(true)
+        upsertRoundAnswer({
+          userId: myUserId,
+          submittedAnswer: '',
+          correct: false,
+          secondsRemaining: 0,
+          baseScore: 0,
+          bonusScore: 0,
+          totalScoreGained: 0,
+          autoLocked: true,
+        })
+        return
+      }
+
+      upsertRoundAnswer({
+        userId: myUserId,
+        submittedAnswer: option,
+        correct: Boolean(data.correct),
+        secondsRemaining: data.secondsRemaining ?? 0,
+        baseScore: data.baseScore ?? 0,
+        bonusScore: data.bonusScore ?? 0,
+        totalScoreGained: data.totalScoreGained ?? 0,
+        autoLocked: false,
+      })
     } catch (e: any) {
+      if (answerRound !== currentRoundRef.current) {
+        return
+      }
+
       if (e?.message?.includes('auto')) {
         setSelected(null)
         setAutoLocked(true)
         toast.warning('Auto-locked! 🔒')
       } else {
+        setSelected(null)
+        setAnswered(false)
         toast.error(e?.message || 'Failed to submit')
       }
     } finally {

@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
 
       // Broadcast auto-lock for this player
       await pusherServer.trigger(`presence-quiz-room-${roomId}`, 'room:player-answered', {
+        round: room.currentRound,
         userId,
+        submittedAnswer: '',
         correct: false,
         totalScoreGained: 0,
         autoLocked: true,
@@ -178,7 +180,9 @@ export async function POST(req: NextRequest) {
         })
 
         await pusherServer.trigger(`presence-quiz-room-${roomId}`, 'room:player-answered', {
+          round: room.currentRound,
           userId: lastPlayer.userId,
+          submittedAnswer: '',
           correct: false,
           totalScoreGained: 0,
           autoLocked: true,
@@ -207,7 +211,9 @@ export async function POST(req: NextRequest) {
 
     // Broadcast this player's answer
     await pusherServer.trigger(`presence-quiz-room-${roomId}`, 'room:player-answered', {
+      round: room.currentRound,
       userId,
+      submittedAnswer,
       correct: isCorrect,
       totalScoreGained,
       bonusScore,

@@ -33,11 +33,46 @@ describe('selectCommonModeThemeCandidate', () => {
       { _id: 'op-2', anilistId: 101, animeTitle: 'Shared Show', type: 'OP', sequence: 2, slug: 'shared-show-op2', audioUrl: 'https://audio/op2.mp3' },
     ]
 
-    const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0, 0.99]))
+    const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0.99]))
 
     expect(selection).not.toBeNull()
     expect(selection?.candidateThemeIds).toEqual(['op-1', 'ed-1'])
     expect(selection?.selectedTheme._id).toBe('ed-1')
+  })
+
+  it('samples randomly from the full eligible common pool instead of taking the first shared title', () => {
+    const playerProfiles: any[] = [
+      {
+        userId: 'player-a',
+        syncedAnimeIds: new Set([101, 102]),
+        libraryAnimeIds: new Set([101, 102]),
+        exactThemeIdsByAnimeId: new Map([
+          [101, new Set(['op-1'])],
+          [102, new Set(['ed-2'])],
+        ]),
+      },
+      {
+        userId: 'player-b',
+        syncedAnimeIds: new Set([101, 102]),
+        libraryAnimeIds: new Set([101, 102]),
+        exactThemeIdsByAnimeId: new Map([
+          [101, new Set(['op-1'])],
+          [102, new Set(['ed-2'])],
+        ]),
+      },
+    ]
+
+    const animeThemes: any[] = [
+      { _id: 'op-1', anilistId: 101, animeTitle: 'Alpha Show', type: 'OP', sequence: 1, slug: 'alpha-op1', audioUrl: 'https://audio/alpha-op1.mp3' },
+      { _id: 'ed-2', anilistId: 102, animeTitle: 'Beta Show', type: 'ED', sequence: 2, slug: 'beta-ed2', audioUrl: 'https://audio/beta-ed2.mp3' },
+    ]
+
+    const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0.99]))
+
+    expect(selection).not.toBeNull()
+    expect(selection?.candidateThemeIds).toEqual(['op-1', 'ed-2'])
+    expect(selection?.selectedAnimeId).toBe(102)
+    expect(selection?.selectedTheme._id).toBe('ed-2')
   })
 
   it('allows anime-level sync to intersect with the other player exact watched theme', () => {

@@ -138,14 +138,15 @@ export function selectCommonModeThemeCandidate(
     sharedAnimeIds = intersectSets(sharedAnimeIds, profile.libraryAnimeIds)
   }
 
+  const sharedValidThemes: CommonModeThemeCandidate[] = []
+  const candidateThemeIds: string[] = []
+  const candidateThemeSummaries: string[] = []
   const remainingAnimeIds = Array.from(sharedAnimeIds).filter(animeId => {
     const themes = groupedThemes.get(animeId) || []
     return themes.length > 0
   })
 
-  while (remainingAnimeIds.length > 0) {
-    const animePickIndex = Math.floor(randomFn() * remainingAnimeIds.length)
-    const [selectedAnimeId] = remainingAnimeIds.splice(animePickIndex, 1)
+  for (const selectedAnimeId of remainingAnimeIds) {
     const themesForAnime = groupedThemes.get(selectedAnimeId) || []
     const allThemeIdsForAnime = new Set(themesForAnime.map(theme => String(theme._id)))
 
@@ -169,20 +170,24 @@ export function selectCommonModeThemeCandidate(
       continue
     }
 
-    const selectedTheme = pickRandomItem(candidateThemes, randomFn)
-    if (!selectedTheme) {
-      continue
-    }
-
-    return {
-      selectedAnimeId,
-      selectedTheme,
-      candidateThemeIds: candidateThemes.map(theme => String(theme._id)),
-      candidateThemeSummaries: candidateThemes.map(theme => `${theme.type}${theme.sequence}:${theme.slug || theme._id}`),
+    for (const candidateTheme of candidateThemes) {
+      sharedValidThemes.push(candidateTheme)
+      candidateThemeIds.push(String(candidateTheme._id))
+      candidateThemeSummaries.push(`${candidateTheme.anilistId}:${candidateTheme.type}${candidateTheme.sequence}:${candidateTheme.slug || candidateTheme._id}`)
     }
   }
 
-  return null
+  const selectedTheme = pickRandomItem(sharedValidThemes, randomFn)
+  if (!selectedTheme?.anilistId) {
+    return null
+  }
+
+  return {
+    selectedAnimeId: selectedTheme.anilistId,
+    selectedTheme,
+    candidateThemeIds,
+    candidateThemeSummaries,
+  }
 }
 
 async function buildRoomPlayerLibraryProfiles(room: any): Promise<RoomPlayerLibraryProfile[]> {
