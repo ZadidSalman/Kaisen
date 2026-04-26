@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Outfit, Inter, JetBrains_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
@@ -31,10 +31,21 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 import { AppShell } from '@/app/components/layout/AppShell'
+import { InstallPrompt } from '@/app/components/InstallPrompt'
 
 export const metadata: Metadata = {
   title: 'Kaikansen',
   description: 'Anime OP/ED rating, discovery, and social platform.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Kaikansen',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#000000',
 }
 
 export default function RootLayout({
@@ -54,6 +65,7 @@ export default function RootLayout({
                 </AppShell>
                 <MiniPlayer />
                 <GlobalInviteListener />
+                <InstallPrompt />
                 <Toaster position="top-center" richColors />
               </PlayerProvider>
             </AuthProvider>
