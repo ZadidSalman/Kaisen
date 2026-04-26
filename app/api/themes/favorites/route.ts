@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB()
 
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
@@ -123,3 +123,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }
+

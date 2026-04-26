@@ -29,7 +29,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const userPayload = proxy(req)
+    const userPayload = await proxy(req)
     if (!userPayload) {
       return NextResponse.json({ success: false, error: 'Unauthorized', code: 401 }, { status: 401 })
     }

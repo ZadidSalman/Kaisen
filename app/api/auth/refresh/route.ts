@@ -20,7 +20,17 @@ export async function POST(req: NextRequest) {
       email: payload.email
     })
 
-    return NextResponse.json({ success: true, accessToken })
+    const response = NextResponse.json({ success: true, accessToken })
+
+    response.cookies.set('token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 15 * 60, // 15 minutes
+      path: '/',
+    })
+
+    return response
   } catch (err) {
     console.error('[API] POST /api/auth/refresh:', err)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })

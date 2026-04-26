@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { ThemeCache, User, WatchHistory } from '@/lib/models'
 import { proxy } from '@/proxy'
+import mongoose from 'mongoose'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type') // 'anime', 'title', 'artist'
     const source = searchParams.get('source') || 'random'
+    const excludeIds = searchParams.get('excludeIds')?.split(',').filter(Boolean) || []
 
     let themePoolFilter: any = { audioUrl: { $ne: null } }
 
@@ -22,9 +24,13 @@ export async function GET(req: NextRequest) {
       themePoolFilter.songTitle = { $nin: [null, '', 'Unknown'] }
     }
 
+    if (excludeIds.length > 0) {
+      themePoolFilter._id = { $nin: excludeIds.map(id => new mongoose.Types.ObjectId(id)) }
+    }
+
     if (source === 'library') {
       // 1. Authenticate the request
-      const payload = proxy(req)
+      const payload = await proxy(req)
       if (!payload) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
       }
@@ -107,14 +113,38 @@ export async function GET(req: NextRequest) {
         orClauses.push({ anilistId: { $in: anilistMediaIds } })
       }
 
-      // If no library data at all, return an informative error
       if (orClauses.length === 0) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Your library is empty. Watch some themes or connect your AniList account!',
+            error: 'Your library is empty. Add themes or connect AniList to play in Watched mode.',
           },
-          { status: 404 }
+          { status: 400 }
+        )
+      }
+
+      // Check if user has enough themes in library (at least 10)
+      const libraryBaseFilter: any = { 
+        audioUrl: { $ne: null },
+        $or: orClauses 
+      }
+      
+      // Apply type restrictions to count
+      if (type === 'artist') {
+        libraryBaseFilter.artistName = { $nin: [null, '', 'Unknown'] }
+      } else if (type === 'title') {
+        libraryBaseFilter.songTitle = { $nin: [null, '', 'Unknown'] }
+      }
+
+      const totalInLibrary = await ThemeCache.countDocuments(libraryBaseFilter)
+
+      if (totalInLibrary < 10) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `You need at least 10 songs to use this mode. (Current: ${totalInLibrary})`,
+          },
+          { status: 400 }
         )
       }
 
@@ -220,3 +250,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }
+

@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB()
 
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
@@ -70,3 +70,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }
+

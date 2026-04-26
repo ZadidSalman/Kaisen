@@ -13,14 +13,14 @@ export const queryKeys = {
   anime:     { byId: (id: number) => ['anime', id] },
   artist:    { bySlug: (slug: string) => ['artist', slug] },
   ratings:   { mine: (themeSlug: string) => ['ratings', 'mine', themeSlug] },
-  favorites: { list: () => ['favorites'] },
+  favorites: { list: (type?: string) => ['favorites', type] },
   friends: {
     list:         (userId: string) => ['friends', userId],
     requests:     (userId: string) => ['friends', 'requests', userId],
     requestsSent: (userId: string) => ['friends', 'requests', 'sent', userId],
     status:       (username: string) => ['friends', 'status', username],
     activity:     (userId: string) => ['friends', 'activity', userId],
-    socialFeed:   () => ['friends', 'social-feed'],
+    socialFeed:   (userId?: string) => ['friends', 'social-feed', userId],
   },
   follow: {
     status:    (username: string) => ['follow', 'status', username],

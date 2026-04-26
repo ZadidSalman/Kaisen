@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { User } from '@/lib/models'
-import { comparePassword, signAccessToken, signRefreshToken } from '@/lib/auth'
+import { comparePassword, signAccessToken, signRefreshToken, setTokenCookie } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: '/',
     })
+
+    setTokenCookie(response, accessToken)
 
     return response
   } catch (err) {

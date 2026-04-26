@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Star, Heart, MoreVertical } from 'lucide-react'
@@ -15,7 +15,7 @@ interface ThemeListRowProps extends Partial<IThemeCache> {
   isWatched?: boolean
 }
 
-export function ThemeListRow(props: ThemeListRowProps) {
+export const ThemeListRow = React.memo(function ThemeListRow(props: ThemeListRowProps) {
   const { currentTheme, isPlaying, playTheme, togglePlay } = usePlayer()
   const { isFavorited, toggleFavorite } = useFavorites()
   const {
@@ -77,4 +77,4 @@ export function ThemeListRow(props: ThemeListRowProps) {
       </div>
     </Link>
   )
-}
+})

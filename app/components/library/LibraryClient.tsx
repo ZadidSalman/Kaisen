@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { fetchLibraryThemes, fetchFavoriteThemes } from '@/lib/api/themes'
 import { useAuth } from '@/hooks/useAuth'
 import { setAccessToken, authFetch } from '@/lib/auth-client'
-import { getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
+import { getFallbackImage, getAnimeTitle, getSongTitle, getFallbackAvatar } from '@/lib/utils'
 import { ThemeLibraryRow } from '@/app/components/library/ThemeLibraryRow'
 
 export function LibraryClient() {
@@ -205,7 +205,13 @@ export function LibraryClient() {
               topArtists.map((artist: any) => (
                 <div key={artist.name} className="flex flex-col items-center gap-2 flex-shrink-0 group">
                   <div className="w-[72px] h-[72px] rounded-full overflow-hidden bg-bg-elevated relative ring-2 ring-transparent group-hover:ring-accent transition-all">
-                    <Image src={artist.image} fill className="object-cover" alt={artist.name} />
+                    <Image 
+                      src={artist.image || getFallbackAvatar(artist.name)} 
+                      fill 
+                      className="object-cover" 
+                      alt={artist.name} 
+                      unoptimized
+                    />
                   </div>
                   <p className="text-xs font-bold text-[#3B2C35] dark:text-white truncate w-[72px] text-center">{artist.name}</p>
                 </div>

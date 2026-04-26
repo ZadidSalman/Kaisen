@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { User } from '@/lib/models'
 import { proxy } from '@/proxy'
+import { setTokenCookie } from '@/lib/auth'
 import { z } from 'zod'
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized', code: 401 }, { status: 401 })
     }
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'User not found', code: 404 }, { status: 404 })
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         id: user._id,
@@ -35,6 +36,13 @@ export async function GET(req: NextRequest) {
         } : null,
       }
     })
+
+    // Sync token to cookie if it's from the header
+    if (payload._token) {
+      setTokenCookie(response, payload._token)
+    }
+
+    return response
   } catch (err) {
     console.error('[API] GET /api/users/me:', err)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
@@ -50,7 +58,7 @@ const updateSchema = z.object({
 export async function PATCH(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized', code: 401 }, { status: 401 })
     }
@@ -68,7 +76,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'User not found', code: 404 }, { status: 404 })
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         id: user._id,
@@ -86,6 +94,12 @@ export async function PATCH(req: NextRequest) {
         } : null,
       }
     })
+
+    if (payload._token) {
+      setTokenCookie(response, payload._token)
+    }
+
+    return response
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ success: false, error: err.issues[0].message }, { status: 400 })

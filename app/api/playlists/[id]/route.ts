@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     await connectDB()
     const { id } = await params
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const playlist = await Playlist.findOne({ _id: id, userId: payload.userId })
@@ -67,7 +67,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     await connectDB()
     const { id } = await params
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const result = await Playlist.deleteOne({ _id: id, userId: payload.userId })

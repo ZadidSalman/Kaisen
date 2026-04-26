@@ -206,11 +206,15 @@ export function ProfileClient({ initialData }: { initialData: any }) {
            <div className="space-y-4">
               {data.activity.length > 0 ? (
                  data.activity.map((item: any, idx: number) => (
-                    <SocialActivityCard key={idx} item={item} />
+                    <SocialActivityCard key={idx} item={item} profileUser={initialData} />
                  ))
               ) : (
                  <div className="bg-bg-surface rounded-[32px] p-8 text-center border border-border-subtle">
-                    <p className="text-sm font-body text-ktext-tertiary italic">No recent social activity.</p>
+                    <p className="text-sm font-body text-ktext-tertiary italic">
+                      {isOwn 
+                        ? "You have no recent social activity." 
+                        : "No recent social activity. (Or activity is restricted)"}
+                    </p>
                  </div>
               )}
            </div>
@@ -249,36 +253,40 @@ function RatedItemCard({ item }: { item: any }) {
   )
 }
 
-function SocialActivityCard({ item }: { item: any }) {
+function SocialActivityCard({ item, profileUser }: { item: any; profileUser: any }) {
   if (!item) return null
   
-  const actor = item.actorId || { displayName: 'Someone', username: 'unknown' }
-  const targetName = item.entityMeta?.targetName || 'a theme'
+  // Since this is the profile user's activity feed, the actor is the profile user.
+  const actorName = profileUser?.displayName || 'User'
+  const actorAvatar = profileUser?.avatarUrl
+  
+  // Get theme details based on populated themeId
+  const theme = item.themeId
+  const targetName = theme ? `${theme.animeTitle || ''} ${theme.type || 'OP'}` : 'a theme'
 
   const getActionText = () => {
-    switch (item.type) {
-      case 'follow': return 'started following you'
-      case 'theme_favorited': return 'favorited your theme'
-      case 'theme_rated': return `rated ${targetName}`
-      case 'comment': return `replied to your comment on ${targetName}`
-      case 'rating_like': return `liked your rating on ${targetName}`
-      case 'playlist_like': return `liked your playlist ${targetName}`
-      default: return 'interacted with your profile'
+    switch (item.activityType) {
+      case 'rating': return `rated ${targetName} ${item.score}/10`
+      case 'watch': return `${item.mode === 'listen' ? 'listened to' : 'watched'} ${targetName}`
+      default: return 'interacted with a theme'
     }
   }
 
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-surface rounded-2xl border border-border-subtle group hover:border-accent/30 transition-all">
       <div className="w-10 h-10 rounded-xl bg-bg-elevated flex items-center justify-center shrink-0">
-        {actor.avatarUrl ? (
-          <img src={actor.avatarUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+        {actorAvatar ? (
+          <img src={actorAvatar} alt="" className="w-full h-full object-cover rounded-xl" />
         ) : (
-          <span className="text-accent font-black">{actor.displayName?.[0] || '?'}</span>
+          <span className="text-accent font-black">{actorName[0] || '?'}</span>
         )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-body text-ktext-primary truncate">
-          <span className="font-black">{actor.displayName}</span> {getActionText()}
+          <span className="font-black">{actorName}</span> {getActionText()}
+        </p>
+        <p className="text-[10px] text-ktext-tertiary font-bold mt-0.5">
+          {new Date(item.date || item.createdAt || Date.now()).toLocaleDateString()}
         </p>
       </div>
     </div>

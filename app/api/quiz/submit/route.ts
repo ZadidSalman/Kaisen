@@ -6,7 +6,7 @@ import { proxy } from '@/proxy'
 export async function POST(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     const body = await req.json()
 
     const { themeSlug, atEntryId, quizType, correct, timeTaken, score, streak } = body
@@ -31,3 +31,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to save attempt' }, { status: 500 })
   }
 }
+

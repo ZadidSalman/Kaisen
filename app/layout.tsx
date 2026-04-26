@@ -7,6 +7,7 @@ import { PlayerProvider } from '@/app/context/PlayerContext'
 import { Toaster } from 'sonner'
 import './globals.css'
 import { MiniPlayer } from '@/app/components/player/MiniPlayer'
+import { GlobalInviteListener } from '@/app/components/GlobalInviteListener'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -52,6 +53,7 @@ export default function RootLayout({
                   {children}
                 </AppShell>
                 <MiniPlayer />
+                <GlobalInviteListener />
                 <Toaster position="top-center" richColors />
               </PlayerProvider>
             </AuthProvider>

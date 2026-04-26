@@ -1,6 +1,6 @@
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { getFallbackAvatar } from '@/lib/utils'
 
 interface AnimeCardProps {
   anime: {
@@ -13,7 +13,7 @@ interface AnimeCardProps {
   }
 }
 
-export function AnimeCard({ anime }: AnimeCardProps) {
+export const AnimeCard = React.memo(function AnimeCard({ anime }: AnimeCardProps) {
   const animeId = anime.anilistId || anime.kitsuId || anime.malId || ''
   const coverImage = anime.coverImageLarge || '/placeholder.png' // Use fallback if not found
 
@@ -41,4 +41,4 @@ export function AnimeCard({ anime }: AnimeCardProps) {
       </div>
     </Link>
   )
-}
+})

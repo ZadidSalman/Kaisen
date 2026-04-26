@@ -5,7 +5,9 @@ import { Star } from 'lucide-react'
 import { IThemeCache } from '@/types/app.types'
 import { getFallbackImage, getAnimeTitle } from '@/lib/utils'
 
-export function ThemeFeaturedCard({ theme, priority = false }: { theme: Partial<IThemeCache>, priority?: boolean }) {
+import React from 'react'
+
+export const ThemeFeaturedCard = React.memo(function ThemeFeaturedCard({ theme, priority = false }: { theme: Partial<IThemeCache>, priority?: boolean }) {
   const {
     slug,
     animeCoverImage,
@@ -47,4 +49,4 @@ export function ThemeFeaturedCard({ theme, priority = false }: { theme: Partial<
       </div>
     </Link>
   )
-}
+})

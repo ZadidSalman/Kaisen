@@ -22,6 +22,7 @@ export function AppHeader() {
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
+    { path: '/quiz/multiplayer', icon: Trophy, label: 'Lobby' },
     { path: user ? `/user/${user.username}/network` : '/login', icon: Users, label: 'Network' },
     { path: '/playlists', icon: ListMusic, label: 'Playlist' },
     { path: '/library?tab=favorites', icon: Heart, label: 'Favorite' },

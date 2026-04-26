@@ -6,7 +6,7 @@ import { proxy } from '@/proxy'
 export async function GET(request: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(request)
+    const payload = await proxy(request)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(request)
+    const payload = await proxy(request)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }

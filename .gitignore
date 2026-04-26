@@ -4,7 +4,8 @@ coverage/
 .DS_Store
 *.log
 .env*
-!.env.example
+.env.example
+.AGENTS/
 scripts/seed.log
 scripts/embed.log
 scripts/seed-all/progress-part*.json

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Search, X, Sparkles, Music, Loader2, ChevronRight } from 'lucide-react'
+import { Search, X, Music, Loader2, ChevronRight } from 'lucide-react'
 import { useInView } from 'react-intersection-observer'
 import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { UserCard } from '@/app/components/shared/UserCard'
@@ -17,7 +17,7 @@ export function SearchClient() {
   const { ref: loadMoreRef, inView } = useInView()
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    const timer = setTimeout(() => setDebouncedQuery(query), 150)
     return () => clearTimeout(timer)
   }, [query])
 
@@ -42,6 +42,11 @@ export function SearchClient() {
     getNextPageParam: (lastPage) => lastPage.meta?.hasMore ? lastPage.meta.page + 1 : undefined,
     enabled: debouncedQuery.length >= 2,
     initialPageParam: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,   // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
   })
 
   useEffect(() => {
@@ -63,36 +68,21 @@ export function SearchClient() {
   const isAllTab = activeTab === 'ALL'
 
   const showInfoBanners = () => {
-    const banners = []
     // OP / ED + sequence active filter badge
     if (meta?.themeTypeFilter) {
       const label = meta.themeSeqFilter != null
         ? `${meta.themeTypeFilter} ${meta.themeSeqFilter}`
         : meta.themeTypeFilter
-      banners.push(
-        <div key="theme-type" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
-          <Music className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs font-body text-accent">Filtering by <span className="font-bold">{label}</span> themes</p>
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1 w-fit">
+            <Music className="w-4 h-4 text-accent flex-shrink-0" />
+            <p className="text-xs font-body text-accent">Filtering by <span className="font-bold">{label}</span> themes</p>
+          </div>
         </div>
       )
     }
-    if (meta?.searchType === 'semantic') {
-      banners.push(
-        <div key="semantic" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
-          <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs font-body text-accent">No exact matches — showing semantically related results</p>
-        </div>
-      )
-    }
-    if (meta?.searchType === 'mood') {
-      banners.push(
-        <div key="mood" className="flex items-center gap-2 px-3 py-2 bg-accent-container rounded-[12px] animate-in fade-in slide-in-from-top-1">
-          <Music className="w-4 h-4 text-accent flex-shrink-0" />
-          <p className="text-xs font-body text-accent">Showing themes matching the mood: {meta.moods?.join(', ')}</p>
-        </div>
-      )
-    }
-    return banners.length > 0 ? <div className="flex flex-col gap-2">{banners}</div> : null
+    return null
   }
 
   const renderEmptyState = () => {

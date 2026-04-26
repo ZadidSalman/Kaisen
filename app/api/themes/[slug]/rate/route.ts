@@ -7,7 +7,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
   try {
     await connectDB()
     const { slug } = await params
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const { score, mode } = await req.json()
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   try {
     await connectDB()
     const { slug } = await params
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: true, data: null }) // Not an error, just no user rating
 
     const theme = await ThemeCache.findOne({ slug })

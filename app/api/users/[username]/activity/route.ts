@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { User, Rating, WatchHistory, Follow } from '@/lib/models'
+import { cookies } from 'next/headers'
+import jwt from 'jsonwebtoken'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ username: string }> }) {
   try {
@@ -9,6 +11,34 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     
     const user = await User.findOne({ username: username.toLowerCase() })
     if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 })
+
+    let isAllowed = false
+
+    try {
+      const cookieStore = await cookies()
+      const token = cookieStore.get('token')?.value
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
+        if (user._id.toString() === decoded.userId) {
+          isAllowed = true
+        } else {
+          // Check if the profile user is following the current user
+          const follow = await Follow.findOne({
+            followerId: user._id,
+            followeeId: decoded.userId
+          })
+          if (follow) {
+            isAllowed = true
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore auth errors, just means not logged in / not allowed
+    }
+
+    if (!isAllowed) {
+       return NextResponse.json({ success: true, data: [] })
+    }
 
     // Fetch mixed activity
     const [ratings, history] = await Promise.all([

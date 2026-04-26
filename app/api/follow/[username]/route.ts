@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: true, isFollowing: false })
 
     const { username } = await params
@@ -34,7 +34,7 @@ export async function POST(
 ) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const { username } = await params
@@ -64,7 +64,7 @@ export async function DELETE(
 ) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const { username } = await params

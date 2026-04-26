@@ -1,4 +1,4 @@
-'use client'
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getFallbackAvatar } from '@/lib/utils'
@@ -13,7 +13,7 @@ interface UserCardProps {
   }
 }
 
-export function UserCard({ user }: UserCardProps) {
+export const UserCard = React.memo(function UserCard({ user }: UserCardProps) {
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-surface border border-border-subtle rounded-2xl hover:shadow-card-hover transition-all group">
       <Link href={`/user/${user.username}`} className="w-12 h-12 rounded-full overflow-hidden relative border border-border-subtle flex-shrink-0 interactive">
@@ -37,4 +37,4 @@ export function UserCard({ user }: UserCardProps) {
       </div>
     </div>
   )
-}
+})

@@ -70,6 +70,26 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.wallpapersden.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'genially-thumbnails.genially.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'media.istockphoto.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static1.srcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.donmai.us',
+      },
     ],
   },
   transpilePackages: ['motion'],

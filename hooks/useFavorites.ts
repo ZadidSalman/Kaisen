@@ -4,12 +4,14 @@ import { fetchFavoriteThemes, addFavoriteTheme, removeFavoriteTheme } from '@/li
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
 
+import { queryKeys } from '@/lib/queryKeys'
+
 export function useFavorites() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: favorites, isLoading } = useQuery({
-    queryKey: ['favorites'],
+    queryKey: queryKeys.favorites.list(),
     queryFn: () => fetchFavoriteThemes(),
     enabled: !!user,
   })

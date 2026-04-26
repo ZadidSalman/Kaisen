@@ -32,15 +32,12 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .lean()
 
-    const total = await ThemeCache.countDocuments(filter)
-
     return NextResponse.json({
       success: true,
       data: themes,
       meta: {
         page,
-        total,
-        hasMore: skip + themes.length < total,
+        hasMore: themes.length === limit,
       }
     })
   } catch (err) {

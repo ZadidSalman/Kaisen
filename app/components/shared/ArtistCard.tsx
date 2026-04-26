@@ -1,5 +1,7 @@
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { getFallbackAvatar } from '@/lib/utils'
 
 interface ArtistCardProps {
   artist: {
@@ -9,8 +11,8 @@ interface ArtistCardProps {
   }
 }
 
-export function ArtistCard({ artist }: ArtistCardProps) {
-  const imageUrl = artist.imageUrl || '/placeholder-artist.png'
+export const ArtistCard = React.memo(function ArtistCard({ artist }: ArtistCardProps) {
+  const imageUrl = artist.imageUrl || getFallbackAvatar(artist.name)
 
   return (
     <Link href={`/artist/${artist.slug}`} className="group flex flex-col items-center gap-2 w-24 flex-shrink-0">
@@ -28,4 +30,4 @@ export function ArtistCard({ artist }: ArtistCardProps) {
       </p>
     </Link>
   )
-}
+})

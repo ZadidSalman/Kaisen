@@ -1,12 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { headers, cookies } from 'next/headers'
 import { verifyAccessToken } from '@/lib/auth'
 
-export function proxy(req: NextRequest) {
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
+export async function proxy(req: NextRequest) {
+  const headersList = await headers()
+  const authHeader = headersList.get('Authorization')
+  let token = null
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1]
+  } else {
+    const cookieStore = await cookies()
+    token = cookieStore.get('token')?.value
   }
 
-  const token = authHeader.split(' ')[1]
-  return verifyAccessToken(token)
+  if (!token) return null
+  
+  const payload = verifyAccessToken(token)
+  if (!payload) return null
+  
+  // Return both payload and token so callers can sync cookies if needed
+  return { ...payload, _token: token }
 }

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { ArrowLeft, Check, X, Trophy, Music2, RotateCcw, Home } from 'lucide-react'
+import { ArrowLeft, Check, X, Trophy, Music2, RotateCcw, Home, Timer, Clock } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/hooks/useAuth'
@@ -30,52 +30,89 @@ function QuizPlayContent() {
   const [round, setRound] = useState(1)
   const [score, setScore] = useState(0)
   const [question, setQuestion] = useState<Question | null>(null)
+  const [usedThemeIds, setUsedThemeIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
   const [isAnswered, setIsAnswered] = useState(false)
   const [isGameOver, setIsGameOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState(20)
+  const [isMediaReady, setIsMediaReady] = useState(false)
+  const [isTimerReady, setIsTimerReady] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const fetchQuestion = async () => {
+  const fetchQuestion = async (idsToExclude = usedThemeIds) => {
     setLoading(true)
     setSelectedOption(null)
     setIsAnswered(false)
     try {
-      const res = await authFetch(`/api/quiz/question?type=${type}&source=${source}`)
+      const res = await authFetch(`/api/quiz/question?type=${type}&source=${source}&excludeIds=${idsToExclude.join(',')}`)
       const json = await res.json()
-      if (json.success) {
+      if (res.ok && json.success) {
         setQuestion(json.data)
+        const themeId = (json.data.questionTheme as any)._id
+        if (themeId) {
+          setUsedThemeIds(prev => [...prev, themeId])
+        }
       } else {
         setError(json.error || 'Failed to load question')
       }
-    } catch (err) {
-      setError('An error occurred while fetching question')
+    } catch (err: any) {
+      setError(err?.message || 'An error occurred while fetching question')
     } finally {
       setLoading(false)
+      setTimeLeft(20)
+      setIsMediaReady(false)
+      setIsTimerReady(false)
     }
   }
 
   useEffect(() => {
-    fetchQuestion()
+    fetchQuestion([])
   }, [])
 
   useEffect(() => {
     if (question && audioRef.current) {
       audioRef.current.src = question.questionTheme.audioUrl
       audioRef.current.volume = 0.5
+      audioRef.current.oncanplay = () => {
+        setIsMediaReady(true)
+        // Delay timer start by 1 second after audio is ready
+        setTimeout(() => setIsTimerReady(true), 1000)
+      }
       audioRef.current.play().catch(e => console.log('Audio play failed', e))
     }
   }, [question])
 
+  useEffect(() => {
+    if (!loading && isTimerReady && !isAnswered && !isGameOver && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => prev - 1)
+      }, 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+
+    if (timeLeft === 0 && !isAnswered && !isGameOver) {
+      handleOptionClick('__TIMEOUT__')
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [loading, isTimerReady, isAnswered, isGameOver, timeLeft])
+
   const handleOptionClick = (option: string) => {
     if (isAnswered) return
-    setSelectedOption(option)
+    
+    const isTimeout = option === '__TIMEOUT__'
+    setSelectedOption(isTimeout ? null : option)
     setIsAnswered(true)
 
-    if (option === question?.correctValue) {
-      setScore(prev => prev + 400) // 400 points per correct answer
+    if (!isTimeout && option === question?.correctValue) {
+      setScore(prev => prev + (timeLeft * 20)) 
     }
 
     // Move to next round after 2 seconds
@@ -86,19 +123,32 @@ function QuizPlayContent() {
       } else {
         setIsGameOver(true)
       }
-    }, 2000)
+    }, isTimeout ? 3000 : 2000)
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-[#fffafa]">
-        <div className="w-16 h-16 bg-error/10 rounded-full flex items-center justify-center mb-4">
-          <X className="w-8 h-8 text-error" />
-        </div>
-        <p className="text-error font-display font-bold text-xl mb-6">{error}</p>
-        <Link href="/quiz" className="px-8 py-4 bg-accent text-white rounded-2xl font-bold shadow-lg interactive">
-          Go Back
-        </Link>
+      <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-[#fffafa]">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="max-w-md w-full bg-white rounded-[40px] p-10 shadow-2xl border-2 border-error/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-2 bg-error/20" />
+          <div className="w-20 h-20 bg-error/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
+            <X className="w-10 h-10 text-error" />
+          </div>
+          <h2 className="text-2xl font-display font-black text-accent mb-4">Oops! Something went wrong</h2>
+          <p className="text-ktext-secondary font-medium mb-10 leading-relaxed">
+            {error}
+          </p>
+          <Link 
+            href="/quiz" 
+            className="flex items-center justify-center gap-2 w-full py-5 bg-accent text-white rounded-2xl font-bold shadow-lg interactive"
+          >
+            Go Back to Lobby
+          </Link>
+        </motion.div>
       </div>
     )
   }
@@ -128,7 +178,8 @@ function QuizPlayContent() {
                 setRound(1)
                 setScore(0)
                 setIsGameOver(false)
-                fetchQuestion()
+                setUsedThemeIds([])
+                fetchQuestion([])
               }}
               className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-accent text-white font-display font-bold shadow-lg interactive"
             >
@@ -165,9 +216,15 @@ function QuizPlayContent() {
           <p className="text-[10px] font-display font-bold text-ktext-tertiary uppercase tracking-[0.1em] mb-0.5">
             ROUND {round}/10
           </p>
-          <p className="text-xl font-display font-black text-black">
-            Score: {score}
-          </p>
+          <div className="flex items-center justify-center gap-3">
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${timeLeft <= 5 ? 'bg-red-50 border-red-100 text-red-500 animate-pulse' : 'bg-pink-50 border-pink-100 text-accent'}`}>
+              <Timer className="w-3.5 h-3.5" />
+              <span className="text-sm font-mono font-bold">{timeLeft}s</span>
+            </div>
+            <p className="text-xl font-display font-black text-black">
+              {score}
+            </p>
+          </div>
         </div>
 
         <div className="w-11" /> {/* Spacer */}
@@ -226,6 +283,11 @@ function QuizPlayContent() {
                     <div className="w-full h-full rounded-full bg-gradient-to-br from-[#f093fb] to-[#f5576c] flex items-center justify-center relative">
                         <div className="w-4 h-4 rounded-full bg-white/40 absolute" />
                         <div className="w-2 h-2 rounded-full bg-[#fffafa] absolute" />
+                        {isAnswered && selectedOption === null && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                             <Clock className="w-8 h-8 text-white animate-pulse" />
+                          </div>
+                        )}
                     </div>
                   </div>
                 </motion.div>
@@ -280,13 +342,13 @@ function QuizPlayContent() {
                     >
                       <span className="truncate pr-4">{option}</span>
                       <AnimatePresence>
-                        {(showSuccess || showFailure) && (
+                        {(showSuccess || showFailure || (isAnswered && isCorrect && selectedOption === null)) && (
                           <motion.div 
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            className={`w-7 h-7 rounded-full flex items-center justify-center ${showSuccess ? 'bg-[#059669] text-white' : 'bg-[#dc2626] text-white'}`}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center ${isCorrect ? 'bg-[#059669] text-white' : 'bg-[#dc2626] text-white'}`}
                           >
-                            {showSuccess ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                            {isCorrect ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
                           </motion.div>
                         )}
                       </AnimatePresence>

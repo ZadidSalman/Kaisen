@@ -22,10 +22,15 @@ interface Activity {
   timestamp: string
 }
 
+import { useAuth } from '@/hooks/useAuth'
+
 export function FriendsActivity() {
+  const { user } = useAuth()
+  
   const { data: activities = [], isLoading } = useQuery<Activity[]>({
-    queryKey: queryKeys.friends.socialFeed(),
+    queryKey: queryKeys.friends.socialFeed(user?.id),
     queryFn: async () => {
+      if (!user) return []
       try {
         const res = await authFetch('/api/social/friends-activity')
         const json = await res.json()
@@ -35,7 +40,10 @@ export function FriendsActivity() {
         return []
       }
     },
-    staleTime: 60 * 1000, // 1 minute
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000,   // 30 minutes
+    refetchOnWindowFocus: false,
   })
 
   if (isLoading) {

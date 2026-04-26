@@ -9,13 +9,15 @@ import { ThemeListRow } from '@/app/components/theme/ThemeListRow'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
+import { queryKeys } from '@/lib/queryKeys'
+
 export function FavoritesClient() {
   const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'OP' | 'ED'>('all')
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['favorites-page', filterType],
+    queryKey: queryKeys.favorites.list(filterType === 'all' ? undefined : filterType),
     queryFn: () => fetchFavoriteThemes(filterType === 'all' ? undefined : filterType, 1, 100),
     enabled: !!user,
   })

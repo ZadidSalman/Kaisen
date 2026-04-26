@@ -44,6 +44,11 @@ const UserSchema = new Schema<IUser>({
   }
 }, { timestamps: true })
 
+UserSchema.index({ username: 1 })
+UserSchema.index({ displayName: 1 })
+UserSchema.index({ isPublic: 1 })
+
+
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema)
 
 interface IVideoSource {
@@ -189,6 +194,12 @@ ThemeCacheSchema.index({ type: 1 })
 ThemeCacheSchema.index({ anilistId: 1 })
 ThemeCacheSchema.index({ mood: 1 })
 ThemeCacheSchema.index({ isPopular: -1, popularRank: 1 })
+ThemeCacheSchema.index({ animeTitle: 1 })
+ThemeCacheSchema.index({ animeTitleEnglish: 1 })
+ThemeCacheSchema.index({ songTitle: 1 })
+ThemeCacheSchema.index({ artistName: 1 })
+ThemeCacheSchema.index({ allArtists: 1 })
+
 
 export const ThemeCache = mongoose.models.ThemeCache || mongoose.model<IThemeCache>('ThemeCache', ThemeCacheSchema)
 
@@ -220,6 +231,11 @@ const AnimeCacheSchema = new Schema({
 AnimeCacheSchema.index({ anilistId: 1 })
 AnimeCacheSchema.index({ malId: 1 })
 AnimeCacheSchema.index({ kitsuId: 1 })
+AnimeCacheSchema.index({ titleRomaji: 1 })
+AnimeCacheSchema.index({ titleEnglish: 1 })
+AnimeCacheSchema.index({ titleAlternative: 1 })
+AnimeCacheSchema.index({ synonyms: 1 })
+
 
 export const AnimeCache = mongoose.models.AnimeCache || mongoose.model('AnimeCache', AnimeCacheSchema)
 
@@ -234,6 +250,9 @@ const ArtistCacheSchema = new Schema({
 }, { timestamps: true })
 
 ArtistCacheSchema.index({ name: 'text', aliases: 'text' })
+ArtistCacheSchema.index({ name: 1 })
+ArtistCacheSchema.index({ aliases: 1 })
+
 
 export const ArtistCache = mongoose.models.ArtistCache || mongoose.model('ArtistCache', ArtistCacheSchema)
 
@@ -246,6 +265,7 @@ const RatingSchema = new Schema({
 }, { timestamps: true })
 
 RatingSchema.index({ userId: 1, themeId: 1 }, { unique: true })
+RatingSchema.index({ userId: 1, createdAt: -1 })
 RatingSchema.index({ userId: 1 })
 RatingSchema.index({ themeId: 1 })
 RatingSchema.index({ createdAt: -1 })
@@ -445,3 +465,105 @@ CommentSchema.index({ themeId: 1, createdAt: -1 })
 CommentSchema.index({ userId: 1 })
 
 export const Comment = mongoose.models.Comment || mongoose.model('Comment', CommentSchema)
+
+const QuizRoomSchema = new Schema({
+  roomCode: { type: String, required: true, unique: true, uppercase: true },
+  roomType: { type: String, enum: ['party', 'duel'], required: true },
+  hostId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+  settings: {
+    poolMode: { type: String, enum: ['random', 'watched', 'common'], required: true },
+    watchedPoolAnimeIds: [{ type: String }],
+    guessType: { type: String, enum: ['anime', 'song', 'artist'], required: true },
+    roundCount: { type: Number, required: true },
+    maxPlayers: { type: Number, required: true },
+    timeLimitSeconds: { type: Number, default: 30 },
+  },
+
+  status: { type: String, enum: ['waiting', 'in_progress', 'ended'], default: 'waiting' },
+  matchmaking: { type: String, enum: ['invite', 'public'], required: true },
+  currentRound: { type: Number, default: 0 },
+
+  players: [
+    {
+      userId: { type: String, required: true },
+      username: { type: String, required: true },
+      avatar: { type: String, default: null },
+      totalScore: { type: Number, default: 0 },
+      ready: { type: Boolean, default: false },
+      joinedAt: { type: Date, default: Date.now },
+      lastSeenAt: { type: Date, default: Date.now },
+    }
+  ],
+
+  emptySince: { type: Date, default: null },
+
+  usedThemeIds: [{ type: String }],
+
+  rounds: [
+    {
+      roundNumber: { type: Number, required: true },
+      themeId: { type: String, required: true },
+      videoUrl: { type: String, required: true },
+      correctAnswer: { type: String, required: true },
+      alternateAnswers: [{ type: String }],
+      options: [{ type: String }],
+      startedAt: { type: Date, required: true },
+      endedAt: { type: Date, default: null },
+
+      // Theme metadata for reveal screen
+      animeTitle: { type: String, default: null },
+      animeTitleEnglish: { type: String, default: null },
+      coverImage: { type: String, default: null },
+      malId: { type: Number, default: null },
+      themeType: { type: String, default: null },
+      themeSequence: { type: Number, default: null },
+      songTitle: { type: String, default: null },
+      artistName: { type: String, default: null },
+
+      answers: [
+        {
+          userId: { type: String, required: true },
+          submittedAnswer: { type: String },
+          correct: { type: Boolean, required: true },
+          answeredAt: { type: Date, default: Date.now },
+          secondsRemaining: { type: Number, required: true },
+          baseScore: { type: Number, required: true },
+          bonusScore: { type: Number, required: true },
+          totalScoreGained: { type: Number, required: true },
+          autoLocked: { type: Boolean, default: false },
+        }
+      ],
+
+      firstCorrectUserId: { type: String, default: null },
+    }
+  ],
+  timerAuthority: { type: String, default: null },
+}, { timestamps: true })
+
+QuizRoomSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 }) // Auto-delete after 24h
+QuizRoomSchema.index({ roomCode: 1 })
+QuizRoomSchema.index({ 'settings.poolMode': 1, 'settings.guessType': 1, roomType: 1, matchmaking: 1, status: 1 })
+
+if (process.env.NODE_ENV === 'development') {
+  delete mongoose.models.QuizRoom;
+}
+export const QuizRoom = mongoose.models.QuizRoom || mongoose.model('QuizRoom', QuizRoomSchema)
+
+
+const QuizInviteSchema = new Schema({
+  roomId: { type: String, required: true },
+  roomCode: { type: String, required: true },
+  roomType: { type: String, enum: ['party', 'duel'], required: true },
+  fromUserId: { type: String, required: true },
+  fromUsername: { type: String, required: true },
+  fromAvatar: { type: String, default: null },
+  toUserId: { type: String, required: true },
+  status: { type: String, enum: ['pending', 'accepted', 'declined', 'expired'], default: 'pending' },
+}, { timestamps: true })
+
+QuizInviteSchema.index({ createdAt: 1 }, { expireAfterSeconds: 5 * 60 }) // Auto-delete after 5m
+QuizInviteSchema.index({ toUserId: 1, status: 1 })
+QuizInviteSchema.index({ roomId: 1, toUserId: 1 })
+
+export const QuizInvite = mongoose.models.QuizInvite || mongoose.model('QuizInvite', QuizInviteSchema)

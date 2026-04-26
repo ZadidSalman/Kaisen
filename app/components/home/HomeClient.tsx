@@ -22,6 +22,9 @@ export function HomeClient() {
   const { data: seasonalData } = useQuery({
     queryKey: queryKeys.themes.seasonal('SPRING', 2026), // Updated to current season
     queryFn: () => fetchSeasonalThemes('SPRING', 2026),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   const {
@@ -34,6 +37,9 @@ export function HomeClient() {
     queryFn: ({ pageParam = 1 }) => fetchPopularThemes(typeFilter ?? undefined, pageParam),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.meta.hasMore ? lastPage.meta.page + 1 : undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {

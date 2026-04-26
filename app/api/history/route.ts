@@ -6,7 +6,7 @@ import { proxy } from '@/proxy'
 export async function POST(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const { themeSlug, atEntryId, mode } = await req.json()
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
-    const payload = proxy(req)
+    const payload = await proxy(req)
     if (!payload) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     const history = await WatchHistory.find({ userId: payload.userId })
@@ -51,3 +51,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }
+

@@ -8,6 +8,7 @@ import { queryKeys } from '@/lib/queryKeys'
 import { timeAgo } from '@/lib/utils'
 import { ChevronLeft, Loader2, Users } from 'lucide-react'
 import { authFetch } from '@/lib/auth-client'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Activity {
   id: string
@@ -26,10 +27,12 @@ interface Activity {
 
 export default function SocialPage() {
   const router = useRouter()
+  const { user } = useAuth()
 
   const { data: activities = [], isLoading } = useQuery<Activity[]>({
-    queryKey: queryKeys.friends.socialFeed(),
+    queryKey: queryKeys.friends.socialFeed(user?.id),
     queryFn: async () => {
+      if (!user) return []
       try {
         const res = await authFetch('/api/social/friends-activity?limit=50')
         const json = await res.json()
@@ -39,6 +42,7 @@ export default function SocialPage() {
         return []
       }
     },
+    enabled: !!user,
     staleTime: 30 * 1000, // 30 seconds
   })
 
