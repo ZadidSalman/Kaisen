@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import dbConnect from '@/lib/db'
-import { QuizRoom, ThemeCache, User, WatchHistory } from '@/lib/models'
+import { QuizRoom, ThemeCache } from '@/lib/models'
 import { pusherServer } from '@/lib/pusher-server'
-import { generateRoundOptions, getCorrectAnswer, getDynamicThemeFilter } from '@/lib/quiz-room-utils'
+import { generateRoundOptions, getCorrectAnswer, selectThemeForRoom } from '@/lib/quiz-room-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,25 +38,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Max rounds reached' }, { status: 400 })
     }
 
-    // Determine filter for themes using dynamic utility
-    const themeFilter = await getDynamicThemeFilter(room)
-    themeFilter._id = { $nin: room.usedThemeIds } // Don't repeat themes in the same room
+    const usedThemeIds = room.usedThemeIds || []
+    let correctTheme = await selectThemeForRoom(room, usedThemeIds)
 
-    // We need 1 random theme
-    let themes = await ThemeCache.aggregate([
-      { $match: themeFilter },
-      { $sample: { size: 1 } }
-    ])
-
-    if (themes.length === 0) {
+    if (!correctTheme) {
       // Fallback if no themes found
-      themes = await ThemeCache.aggregate([
+      const themes = await ThemeCache.aggregate([
         { $match: { audioUrl: { $ne: null } } },
         { $sample: { size: 1 } }
       ])
+      correctTheme = themes[0]
+      console.warn('[QuizRoomTheme] Next route fallback selected unrestricted theme', {
+        roomId: roomId,
+        themeId: correctTheme?._id?.toString?.() || correctTheme?._id,
+        animeId: correctTheme?.anilistId,
+        animeTitle: correctTheme?.animeTitleEnglish || correctTheme?.animeTitle,
+        themeType: correctTheme?.type,
+        themeSequence: correctTheme?.sequence,
+        audioUrl: correctTheme?.audioUrl,
+      })
     }
 
-    const correctTheme = themes[0]
+    if (!correctTheme) {
+      return NextResponse.json({ success: false, error: 'No theme available' }, { status: 404 })
+    }
 
     // Determine correct answer based on guess type
     const correctAnswer = getCorrectAnswer(correctTheme, room.settings.guessType)

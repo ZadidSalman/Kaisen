@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
 import dbConnect from '@/lib/db'
 import { QuizRoom } from '@/lib/models'
 import { cleanupRoom } from '@/lib/quiz-room-cleanup'
+import { proxy } from '@/proxy'
 
 export async function POST(req: NextRequest) {
   try {
     await dbConnect()
-    const session = await getSession()
-    if (!session || !session.user) {
+    const payload = await proxy(req)
+    if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -23,10 +23,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Update current player's heartbeat
-    const player = room.players.find((p: any) => p.userId === session.user.id)
+    const player = room.players.find((p: any) => p.userId === payload.userId)
     if (player) {
       player.lastSeenAt = new Date()
       await room.save()
+    } else {
+      return NextResponse.json({ success: false, error: 'Room closed' }, { status: 404 })
     }
 
     // 2. Perform background cleanup

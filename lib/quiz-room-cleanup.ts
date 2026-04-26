@@ -1,6 +1,14 @@
 import { QuizRoom } from './models'
 import { pusherServer } from './pusher-server'
 
+async function safeTrigger(channel: string, event: string, payload: Record<string, unknown>) {
+  try {
+    await pusherServer.trigger(channel, event, payload)
+  } catch (error) {
+    console.error(`[QuizRoomCleanup] Failed to trigger ${event}:`, error)
+  }
+}
+
 export async function cleanupRoom(room: any) {
   const now = new Date()
   const HEARTBEAT_THRESHOLD = 45 * 1000 // 45 seconds
@@ -43,7 +51,7 @@ export async function cleanupRoom(room: any) {
 
     // 3. Notify remaining players about disconnected users
     for (const userId of disconnectedPlayerIds) {
-      await pusherServer.trigger(`presence-quiz-room-${room._id}`, 'room:player-left', {
+      await safeTrigger(`presence-quiz-room-${room._id}`, 'room:player-left', {
         userId,
         newHostId: room.hostId,
         roomStatus: room.status,
@@ -62,7 +70,7 @@ export async function cleanupRoom(room: any) {
       const emptyTime = now.getTime() - new Date(room.emptySince).getTime()
       if (emptyTime > EMPTY_ROOM_THRESHOLD) {
         await QuizRoom.findByIdAndDelete(room._id)
-        await pusherServer.trigger(`presence-quiz-room-${room._id}`, 'room:closed', {
+        await safeTrigger(`presence-quiz-room-${room._id}`, 'room:closed', {
           reason: 'inactivity'
         })
         return null // Room is gone
@@ -100,7 +108,7 @@ export async function cleanupAllEmptyRooms() {
       const emptyTime = now.getTime() - new Date(room.emptySince).getTime()
       if (emptyTime > EMPTY_ROOM_THRESHOLD) {
         await QuizRoom.findByIdAndDelete(room._id)
-        await pusherServer.trigger(`presence-quiz-room-${room._id}`, 'room:closed', {
+        await safeTrigger(`presence-quiz-room-${room._id}`, 'room:closed', {
           reason: 'inactivity'
         })
       }

@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth'
 import dbConnect from '@/lib/db'
 import { QuizRoom, ThemeCache } from '@/lib/models'
 import { pusherServer } from '@/lib/pusher-server'
-import { generateRoundOptions, getCorrectAnswer } from '@/lib/quiz-room-utils'
+import { generateRoundOptions, getCorrectAnswer, selectThemeForRoom } from '@/lib/quiz-room-utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,22 +50,28 @@ export async function POST(req: NextRequest) {
       const allReady = room.players.every((p: any) => p.ready)
 
       if (allReady) {
-        const { getDynamicThemeFilter } = await import('@/lib/quiz-room-utils')
-        const themeFilter = await getDynamicThemeFilter(room)
+        let correctTheme = await selectThemeForRoom(room)
 
-        let themes = await ThemeCache.aggregate([
-          { $match: themeFilter },
-          { $sample: { size: 1 } }
-        ])
-
-        if (themes.length === 0) {
-          themes = await ThemeCache.aggregate([
+        if (!correctTheme) {
+          const themes = await ThemeCache.aggregate([
             { $match: { audioUrl: { $ne: null } } },
             { $sample: { size: 1 } }
           ])
+          correctTheme = themes[0]
+          console.warn('[QuizRoomTheme] Ready route fallback selected unrestricted theme', {
+            roomId: roomId,
+            themeId: correctTheme?._id?.toString?.() || correctTheme?._id,
+            animeId: correctTheme?.anilistId,
+            animeTitle: correctTheme?.animeTitleEnglish || correctTheme?.animeTitle,
+            themeType: correctTheme?.type,
+            themeSequence: correctTheme?.sequence,
+            audioUrl: correctTheme?.audioUrl,
+          })
         }
 
-        const correctTheme = themes[0]
+        if (!correctTheme) {
+          return NextResponse.json({ error: 'No theme available' }, { status: 404 })
+        }
         const correctAnswer = getCorrectAnswer(correctTheme, room.settings.guessType)
         const options = await generateRoundOptions(correctTheme, room.settings.guessType)
 
