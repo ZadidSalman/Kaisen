@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
-import { User, WatchHistory } from '@/lib/models'
+import { ThemeCache, User, WatchHistory } from '@/lib/models'
 import { proxy } from '@/proxy'
 import { mergeWatchHistory, normalizeAniListEntry, normalizeLocalEntry } from '@/lib/history-utils'
 
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
       .limit(50)
       .populate('themeId')
       .lean()
+    const localThemeIds = await WatchHistory.find({ userId: user._id }).distinct('themeId')
 
     if (!includeMerged) {
       return NextResponse.json({
@@ -95,12 +96,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     }
 
     const mergedHistory = mergeWatchHistory(localEntries, remoteEntries)
+    const remoteMediaIds = remoteEntries.map((entry) => Number(entry.id)).filter((id) => Number.isFinite(id))
+    const fallbackMediaIds = user.anilist?.completedMediaIds || []
+    const mediaIdsForLibraryCount = remoteMediaIds.length > 0 ? remoteMediaIds : fallbackMediaIds
+
+    const libraryOrClauses: any[] = []
+    if (localThemeIds.length > 0) {
+      libraryOrClauses.push({ _id: { $in: localThemeIds } })
+    }
+    if (mediaIdsForLibraryCount.length > 0) {
+      libraryOrClauses.push({ anilistId: { $in: mediaIdsForLibraryCount } })
+    }
+
+    const libraryTotal = libraryOrClauses.length > 0
+      ? await ThemeCache.countDocuments({
+          audioUrl: { $ne: null },
+          $or: libraryOrClauses,
+        })
+      : 0
 
     return NextResponse.json({
       success: true,
       data: mergedHistory,
       meta: {
         total: mergedHistory.length,
+        libraryTotal,
         localCount: localEntries.length,
         remoteCount: remoteEntries.length,
         merged: true,

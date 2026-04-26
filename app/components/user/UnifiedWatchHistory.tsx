@@ -110,7 +110,7 @@ export function UnifiedWatchHistory({ username }: UnifiedWatchHistoryProps) {
             Combined Watch History
           </h3>
           <p className="text-xs font-body text-ktext-secondary">
-            {meta?.total ?? mergedHistory.length} total entries
+            {meta?.libraryTotal ?? meta?.total ?? mergedHistory.length} total in library
             {' • '}
             Local {meta?.localCount ?? 0}
             {' • '}

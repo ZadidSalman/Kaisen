@@ -62,7 +62,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
         // Simple heuristic for stats if not provided
         setStats(prev => ({
           ...prev,
-          totalWatched: history.success ? (history.meta?.total ?? history.data.length) : 0,
+          totalWatched: history.success ? (history.meta?.libraryTotal ?? history.meta?.total ?? history.data.length) : 0,
           totalRated: ratings.success ? ratings.data.length : 0
         }))
 
