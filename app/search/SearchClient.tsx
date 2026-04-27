@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Search, X, Music, Loader2, ChevronRight } from 'lucide-react'
 import { useInView } from 'react-intersection-observer'
@@ -15,11 +15,12 @@ export function SearchClient() {
   const [activeTab, setActiveTab] = useState<SearchTab>('ALL')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const { ref: loadMoreRef, inView } = useInView()
+  const normalizedQuery = useMemo(() => query.trim(), [query])
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 150)
+    const timer = setTimeout(() => setDebouncedQuery(normalizedQuery), 300)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [normalizedQuery])
 
   const {
     data,
@@ -29,14 +30,17 @@ export function SearchClient() {
     isLoading,
   } = useInfiniteQuery({
     queryKey: ['search', debouncedQuery, activeTab],
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam = 1, signal }) => {
       if (debouncedQuery.length < 2) return { data: { songs: [], artists: [], anime: [], users: [] }, meta: { searchType: 'none' } }
       const params = new URLSearchParams({
         q: debouncedQuery,
         page: pageParam.toString(),
         type: activeTab,
       })
-      const res = await fetch(`/api/search?${params}`)
+      const res = await fetch(`/api/search?${params}`, { signal })
+      if (!res.ok) {
+        throw new Error(`Search request failed with status ${res.status}`)
+      }
       return res.json()
     },
     getNextPageParam: (lastPage) => lastPage.meta?.hasMore ? lastPage.meta.page + 1 : undefined,

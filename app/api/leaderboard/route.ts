@@ -1,16 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server'
 import dbConnect from '@/lib/db'
-import { UserRank } from '@/lib/models'
+import { LeaderboardSnapshot, UserRank } from '@/lib/models'
 
 export const dynamic = 'force-dynamic'
+const SNAPSHOT_SCOPE = 'global'
+const SNAPSHOT_SEASON_ID = 'all-time'
+const SNAPSHOT_MAX_AGE_MS = 1000 * 60 * 15
 
 export async function GET(req: NextRequest) {
   try {
     await dbConnect()
 
-    // Query top 100 players by RP
-    // In a production app with a huge player base, you'd use Redis or LeaderboardSnapshot.
-    // For now, sorting UserRank directly is fine since MongoDB handles this well with an index on rp.
+    // Fast path: serve a recent snapshot.
+    const snapshot = await LeaderboardSnapshot.findOne({
+      scope: SNAPSHOT_SCOPE,
+      seasonId: SNAPSHOT_SEASON_ID,
+    }).lean()
+    const now = Date.now()
+    const snapshotFresh = snapshot?.computedAt
+      ? (now - new Date(snapshot.computedAt).getTime()) <= SNAPSHOT_MAX_AGE_MS
+      : false
+
+    if (snapshotFresh && Array.isArray(snapshot?.entries) && snapshot.entries.length > 0) {
+      const topPlayers = snapshot.entries.slice(0, 100).map((entry: any) => ({
+        userId: entry.userId,
+        rp: entry.rp,
+        tier: entry.tier,
+        division: entry.division,
+        username: entry.username,
+        displayName: entry.username,
+        avatarUrl: entry.avatar ?? null,
+        stats: {
+          wins: entry.wins,
+          winRate: entry.winRate,
+        },
+      }))
+
+      return NextResponse.json(
+        {
+          success: true,
+          leaderboard: topPlayers,
+          meta: {
+            source: 'snapshot',
+            computedAt: snapshot.computedAt,
+          }
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180'
+          }
+        }
+      )
+    }
+
+    // Fallback path: live aggregation when no recent snapshot exists.
     const topPlayers = await UserRank.aggregate([
       { $sort: { rp: -1 } },
       { $limit: 100 },
@@ -47,7 +90,20 @@ export async function GET(req: NextRequest) {
       }
     ])
 
-    return NextResponse.json({ success: true, leaderboard: topPlayers })
+    return NextResponse.json(
+      {
+        success: true,
+        leaderboard: topPlayers,
+        meta: {
+          source: 'live',
+        },
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180'
+        }
+      }
+    )
   } catch (error) {
     console.error('Leaderboard fetch error:', error)
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })

@@ -1,6 +1,8 @@
 import { QuizRoom, UserRank, RankHistory } from '@/lib/models'
 import { pusherServer } from '@/lib/pusher-server'
 
+const pendingRpRuns = new Set<string>()
+
 export type RankTier = 'academy' | 'genin' | 'chunin' | 'jonin' | 'anbu' | 'kage'
 
 export const TIERS = [
@@ -174,6 +176,21 @@ export async function calculateAndApplyRP(roomId: string) {
   }
 
   await invalidateLeaderboardCache()
+}
+
+export function scheduleRPUpdate(roomId: string) {
+  if (pendingRpRuns.has(roomId)) return
+  pendingRpRuns.add(roomId)
+
+  setTimeout(async () => {
+    try {
+      await calculateAndApplyRP(roomId)
+    } catch (error) {
+      console.error('Failed to calculate RP in background:', error)
+    } finally {
+      pendingRpRuns.delete(roomId)
+    }
+  }, 0)
 }
 
 export async function invalidateLeaderboardCache() {

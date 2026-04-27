@@ -29,7 +29,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     .limit(20)
     .lean()
 
-    return NextResponse.json({ success: true, data: similar })
+    return NextResponse.json(
+      { success: true, data: similar },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=600'
+        }
+      }
+    )
   } catch (err) {
     console.error('[API] GET /api/themes/[slug]/similar:', err)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })

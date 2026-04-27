@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth'
 import dbConnect from '@/lib/db'
 import { QuizRoom } from '@/lib/models'
 import { pusherServer } from '@/lib/pusher-server'
-import { calculateAndApplyRP } from '@/lib/rank-utils'
+import { scheduleRPUpdate } from '@/lib/rank-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       await room.save()
 
       if (room.status === 'ended') {
-        await calculateAndApplyRP(roomId)
+        scheduleRPUpdate(roomId)
       }
 
       // Broadcast auto-lock for this player
@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
     await room.save()
 
     if (room.status === 'ended') {
-      await calculateAndApplyRP(roomId)
+      scheduleRPUpdate(roomId)
     }
 
     // Broadcast this player's answer

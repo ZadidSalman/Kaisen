@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
 import { ThemeCache, User, AnimeCache, ArtistCache } from '@/lib/models'
 
+const MAX_TERMS = 6
+const MAX_TERM_LENGTH = 32
+const SONG_CANDIDATE_LIMIT = 400
+
 /**
  * Parses OP/ED type and optional sequence number out of the raw query tokens.
  * Handles: "op", "ed", "op9", "ed12", "op 9", "ed 3"
@@ -40,6 +44,19 @@ function parseThemeModifiers(words: string[]): {
   return { cleanWords, themeTypeFilter, themeSeqFilter }
 }
 
+function escapeRegex(raw: string): string {
+  return raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function normalizeWords(query: string): string[] {
+  return query
+    .split(/\s+/)
+    .map((w) => w.trim().toLowerCase())
+    .filter((w) => w.length > 0)
+    .slice(0, MAX_TERMS)
+    .map((w) => w.slice(0, MAX_TERM_LENGTH))
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
@@ -58,28 +75,33 @@ export async function GET(req: NextRequest) {
 
     const limit = type === 'ALL' ? 5 : 20
     const skip = (page - 1) * limit
-    const words = q.split(/\s+/).filter(w => w.length > 0)
+    const words = normalizeWords(q)
 
     // ── OP / ED + Sequence detection ────────────────────────────────────
     const { cleanWords, themeTypeFilter, themeSeqFilter } = parseThemeModifiers(words)
     const themeModifierUsed = themeTypeFilter !== null
 
+    const escapedWords = cleanWords.map(escapeRegex)
+    const prefixWord = escapedWords[0] ?? ''
+    const containsRegex = (word: string) => ({ $regex: word, $options: 'i' as const })
+    const prefixRegex = (word: string) => ({ $regex: `^${word}`, $options: 'i' as const })
+
     // Users Filter
-    const userConditions = cleanWords.map(word => ({
+    const userConditions = escapedWords.map(word => ({
       $or: [
-        { username: { $regex: word, $options: 'i' } },
-        { displayName: { $regex: word, $options: 'i' } }
+        { username: containsRegex(word) },
+        { displayName: containsRegex(word) }
       ]
     }))
     const userRegexFilter: any = { isPublic: true }
     if (userConditions.length > 0) userRegexFilter.$and = userConditions
 
     // Themes Filter
-    const themeConditions = cleanWords.map(word => ({
+    const themeConditions = escapedWords.map(word => ({
       $or: [
-        { animeTitle: { $regex: word, $options: 'i' } },
-        { songTitle:  { $regex: word, $options: 'i' } },
-        { artistName: { $regex: word, $options: 'i' } },
+        { animeTitle: containsRegex(word) },
+        { songTitle: containsRegex(word) },
+        { artistName: containsRegex(word) },
       ]
     }))
     let themeRegexFilter: any =
@@ -90,10 +112,10 @@ export async function GET(req: NextRequest) {
     if (themeSeqFilter !== null) themeRegexFilter.sequence = themeSeqFilter
 
     // Artists Filter
-    const artistConditions = cleanWords.map(word => ({
+    const artistConditions = escapedWords.map(word => ({
       $or: [
-        { name:    { $regex: word, $options: 'i' } },
-        { aliases: { $regex: word, $options: 'i' } }
+        { name: containsRegex(word) },
+        { aliases: containsRegex(word) }
       ]
     }))
     const artistRegexFilter: any =
@@ -101,11 +123,11 @@ export async function GET(req: NextRequest) {
       artistConditions.length >  1  ? { $and: artistConditions } : {}
 
     // Anime Filter
-    const animeConditions = cleanWords.map(word => ({
+    const animeConditions = escapedWords.map(word => ({
       $or: [
-        { titleRomaji:  { $regex: word, $options: 'i' } },
-        { titleEnglish: { $regex: word, $options: 'i' } },
-        { synonyms:     { $regex: word, $options: 'i' } }
+        { titleRomaji: containsRegex(word) },
+        { titleEnglish: containsRegex(word) },
+        { synonyms: containsRegex(word) }
       ]
     }))
     const animeRegexFilter: any =
@@ -139,17 +161,43 @@ export async function GET(req: NextRequest) {
     if (type === 'ALL' || type === 'SONGS') {
       const songsLimit = themeModifierUsed ? 50 : limit
       promises.push(
-        ThemeCache.find(themeRegexFilter)
-          .select({ embedding: 0, mood: 0, animeGrillImage: 0, syncedAt: 0, animeTitleAlternative: 0, animeStudios: 0, animeSeries: 0 })
-          .sort({ totalWatches: -1, avgRating: -1 })
-          .skip(skip)
-          .limit(songsLimit)
-          .lean()
-          .then(res => { songs = res })
+        (async () => {
+          // Two-stage regex search for songs:
+          // 1) narrow with cheap prefix match for candidates
+          // 2) run full regex filter only on candidate IDs
+          let effectiveThemeFilter: any = themeRegexFilter
+
+          if (!themeModifierUsed && prefixWord) {
+            const prefixFilter: any = {
+              $or: [
+                { animeTitle: prefixRegex(prefixWord) },
+                { songTitle: prefixRegex(prefixWord) },
+                { artistName: prefixRegex(prefixWord) },
+              ]
+            }
+            const candidateIds = await ThemeCache.find(prefixFilter).select('_id').limit(SONG_CANDIDATE_LIMIT).lean()
+            if (candidateIds.length > 0) {
+              effectiveThemeFilter = {
+                $and: [
+                  { _id: { $in: candidateIds.map((item: any) => item._id) } },
+                  themeRegexFilter
+                ]
+              }
+            }
+          }
+
+          songs = await ThemeCache.find(effectiveThemeFilter)
+            .select({ embedding: 0, mood: 0, animeGrillImage: 0, syncedAt: 0, animeTitleAlternative: 0, animeStudios: 0, animeSeries: 0 })
+            .sort({ totalWatches: -1, avgRating: -1 })
+            .skip(skip)
+            .limit(songsLimit)
+            .lean()
+
+          if (type === 'SONGS' || themeModifierUsed) {
+            totalCount = await ThemeCache.countDocuments(effectiveThemeFilter)
+          }
+        })()
       )
-      if (type === 'SONGS' || themeModifierUsed) {
-        promises.push(ThemeCache.countDocuments(themeRegexFilter).then(c => { totalCount = c }))
-      }
     }
 
     await Promise.all(promises)
@@ -158,18 +206,25 @@ export async function GET(req: NextRequest) {
     const currentResultsCount = songs.length || artists.length || anime.length || users.length
     const hasMore = type === 'ALL' ? false : (skip + currentResultsCount) < totalCount
 
-    return NextResponse.json({
-      success: true,
-      data: { songs, artists, anime, users },
-      meta: {
-        page,
-        total: totalCount,
-        hasMore,
-        searchType: 'regex',
-        themeTypeFilter,
-        themeSeqFilter,
+    return NextResponse.json(
+      {
+        success: true,
+        data: { songs, artists, anime, users },
+        meta: {
+          page,
+          total: totalCount,
+          hasMore,
+          searchType: 'regex',
+          themeTypeFilter,
+          themeSeqFilter,
+        },
       },
-    })
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=60'
+        }
+      }
+    )
 
   } catch (err) {
     console.error('[API] GET /api/search:', err)

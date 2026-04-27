@@ -23,14 +23,21 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .lean()
 
-    return NextResponse.json({
-      success: true,
-      data: themes,
-      meta: {
-        page,
-        hasMore: themes.length === limit,
+    return NextResponse.json(
+      {
+        success: true,
+        data: themes,
+        meta: {
+          page,
+          hasMore: themes.length === limit,
+        }
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300'
+        }
       }
-    })
+    )
   } catch (err) {
     console.error('[API] GET /api/themes/popular:', err)
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })

@@ -3,6 +3,48 @@ import { connectDB } from '@/lib/db'
 import { ThemeCache, User, WatchHistory } from '@/lib/models'
 import { proxy } from '@/proxy'
 
+const ANILIST_TIMEOUT_MS = 1500
+
+async function fetchAniListCompletedMediaIds(accessToken: string, userId: number, timeoutMs = ANILIST_TIMEOUT_MS): Promise<number[] | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const anilistRes = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          query ($userId: Int) {
+            MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
+              lists {
+                entries {
+                  mediaId
+                }
+              }
+            }
+          }
+        `,
+        variables: { userId }
+      }),
+      signal: controller.signal
+    })
+
+    if (!anilistRes.ok) return null
+    const anilistData = await anilistRes.json()
+    const entries = anilistData.data?.MediaListCollection?.lists?.flatMap((list: any) => list.entries) || []
+    return entries.map((e: any) => e.mediaId)
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
@@ -28,42 +70,32 @@ export async function GET(req: NextRequest) {
     let anilistMediaIds: number[] = []
 
     // 2. Get AniList completed media IDs if connected
-    if (user.anilist?.accessToken) {
+    let anilistSyncDeferred = false
+    let anilistDataStale = false
+    if (user.anilist?.accessToken && user.anilist?.userId) {
       let mediaIds = user.anilist.completedMediaIds || []
       const sixHours = 1000 * 60 * 60 * 6
       const isStale = !user.anilist.syncedAt || (new Date().getTime() - new Date(user.anilist.syncedAt).getTime() > sixHours)
+      anilistDataStale = isStale
 
       if (mediaIds.length === 0 || isStale) {
-        // Fetch completed media IDs from AniList
-        const anilistRes = await fetch('https://graphql.anilist.co', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${user.anilist.accessToken}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            query: `
-              query ($userId: Int) {
-                MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
-                  lists {
-                    entries {
-                      mediaId
-                    }
-                  }
-                }
-              }
-            `,
-            variables: { userId: user.anilist.userId }
-          }),
-        })
-
-        if (anilistRes.ok) {
-          const anilistData = await anilistRes.json()
-          const entries = anilistData.data?.MediaListCollection?.lists?.flatMap((list: any) => list.entries) || []
-          mediaIds = entries.map((e: any) => e.mediaId)
-
-          if (mediaIds.length > 0) {
+        // For stale data with cache available, do not block response.
+        // Trigger a best-effort refresh in background.
+        if (mediaIds.length > 0 && isStale) {
+          anilistSyncDeferred = true
+          void fetchAniListCompletedMediaIds(user.anilist.accessToken, user.anilist.userId).then(async (freshIds) => {
+            if (freshIds && freshIds.length > 0) {
+              await User.findByIdAndUpdate(user._id, {
+                'anilist.completedMediaIds': freshIds,
+                'anilist.syncedAt': new Date()
+              })
+            }
+          }).catch(() => {})
+        } else {
+          // First-time sync (no cache): do a short timeout attempt, then fall back.
+          const freshIds = await fetchAniListCompletedMediaIds(user.anilist.accessToken, user.anilist.userId)
+          if (freshIds && freshIds.length > 0) {
+            mediaIds = freshIds
             await User.findByIdAndUpdate(user._id, {
               'anilist.completedMediaIds': mediaIds,
               'anilist.syncedAt': new Date()
@@ -115,7 +147,9 @@ export async function GET(req: NextRequest) {
         total,
         page,
         limit,
-        anilistUser: user.anilist?.username || null
+        anilistUser: user.anilist?.username || null,
+        anilistSyncDeferred,
+        anilistDataStale,
       }
     })
   } catch (err) {

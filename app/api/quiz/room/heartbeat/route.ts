@@ -26,22 +26,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Room closed' }, { status: 404 })
     }
 
-    let room = await QuizRoom.findById(roomId)
-    if (!room) {
-      return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
+    // Occasionally run cleanup without blocking heartbeat response.
+    // This avoids read-after-write DB work on every 15s tick.
+    const shouldRunCleanup = Math.random() < 0.1
+    if (shouldRunCleanup) {
+      void QuizRoom.findById(roomId)
+        .then((room) => (room ? cleanupRoom(room) : null))
+        .catch(() => {})
     }
 
-    // 2. Perform background cleanup
-    room = await cleanupRoom(room)
-
-    if (!room) {
-      return NextResponse.json({ success: false, error: 'Room closed due to inactivity' }, { status: 404 })
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      playerCount: room.players.length,
-      hostId: room.hostId
+    return NextResponse.json({
+      success: true,
+      heartbeatAccepted: true,
     })
   } catch (error) {
     console.error('Heartbeat error:', error)

@@ -4,6 +4,61 @@ import { ThemeCache, User, WatchHistory } from '@/lib/models'
 import { proxy } from '@/proxy'
 import { mergeWatchHistory, normalizeAniListEntry, normalizeLocalEntry } from '@/lib/history-utils'
 
+const ANILIST_TIMEOUT_MS = 1800
+
+async function fetchAniListHistoryEntries(accessToken: string, userId: number) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ANILIST_TIMEOUT_MS)
+  try {
+    const anilistRes = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          query ($userId: Int) {
+            MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
+              lists {
+                entries {
+                  updatedAt
+                  media {
+                    id
+                    title {
+                      romaji
+                      english
+                    }
+                    coverImage {
+                      large
+                    }
+                    episodes
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: { userId },
+      }),
+      signal: controller.signal,
+    })
+
+    if (!anilistRes.ok) {
+      throw new Error(`AniList request failed with status ${anilistRes.status}`)
+    }
+
+    const anilistData = await anilistRes.json()
+    const anilistLists = anilistData.data?.MediaListCollection?.lists ?? []
+    return anilistLists.flatMap((list: any) =>
+      (list.entries ?? []).map(normalizeAniListEntry)
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ username: string }> }) {
   try {
     await connectDB()
@@ -44,54 +99,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     const payload = await proxy(req)
     const isOwnProfile = payload?.userId === String(user._id)
 
-    if (isOwnProfile && user.anilist?.accessToken && user.anilist?.userId) {
+    const includeRemote = searchParams.get('includeRemote') !== '0'
+    if (includeRemote && isOwnProfile && user.anilist?.accessToken && user.anilist?.userId) {
       try {
-        const anilistRes = await fetch('https://graphql.anilist.co', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${user.anilist.accessToken}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            query: `
-              query ($userId: Int) {
-                MediaListCollection(userId: $userId, type: ANIME, status: COMPLETED) {
-                  lists {
-                    entries {
-                      updatedAt
-                      media {
-                        id
-                        title {
-                          romaji
-                          english
-                        }
-                        coverImage {
-                          large
-                        }
-                        episodes
-                      }
-                    }
-                  }
-                }
-              }
-            `,
-            variables: { userId: user.anilist.userId },
-          }),
-          cache: 'no-store',
-        })
-
-        if (!anilistRes.ok) {
-          throw new Error(`AniList request failed with status ${anilistRes.status}`)
-        }
-
-        const anilistData = await anilistRes.json()
-        const anilistLists = anilistData.data?.MediaListCollection?.lists ?? []
-        remoteEntries = anilistLists.flatMap((list: any) =>
-          (list.entries ?? []).map(normalizeAniListEntry)
-        )
+        remoteEntries = await fetchAniListHistoryEntries(user.anilist.accessToken, user.anilist.userId)
       } catch (error) {
-        anilistError = error instanceof Error ? error.message : 'Failed to fetch AniList history'
+        anilistError = error instanceof Error
+          ? (error.name === 'AbortError' ? 'AniList request timed out' : error.message)
+          : 'Failed to fetch AniList history'
       }
     }
 
@@ -125,7 +140,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
         remoteCount: remoteEntries.length,
         merged: true,
         anilistConnected: Boolean(user.anilist?.userId),
-        anilistIncluded: isOwnProfile && Boolean(user.anilist?.accessToken),
+        anilistIncluded: includeRemote && isOwnProfile && Boolean(user.anilist?.accessToken),
         anilistError,
       },
     })
