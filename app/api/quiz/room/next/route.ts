@@ -7,7 +7,17 @@ import { generateRoundOptions, getCorrectAnswer, selectThemeForRoom } from '@/li
 
 export const dynamic = 'force-dynamic'
 
+const toProxyUrl = (sourceUrl: string | null | undefined) =>
+  sourceUrl ? `/api/media/proxy?url=${encodeURIComponent(sourceUrl)}` : ''
+
 export async function POST(req: NextRequest) {
+  const routeTag = 'QuizRoomNext'
+  const routeLog = (event: string, extra?: Record<string, unknown>) => {
+    console.log(`[${routeTag}] ${event}`, extra ?? {})
+  }
+  const routeWarn = (event: string, extra?: Record<string, unknown>) => {
+    console.warn(`[${routeTag}] ${event}`, extra ?? {})
+  }
   try {
     await dbConnect()
     const session = await getSession()
@@ -18,26 +28,32 @@ export async function POST(req: NextRequest) {
 
     const { roomId } = await req.json()
     if (!roomId) {
+      routeWarn('missing_room_id')
       return NextResponse.json({ success: false, error: 'Missing roomId' }, { status: 400 })
     }
 
     const room = await QuizRoom.findById(roomId)
     if (!room) {
+      routeWarn('room_not_found', { roomId })
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
     }
 
     if (room.hostId && room.hostId.toString() !== payload.userId) {
+      routeWarn('forbidden_non_host_next', { roomId, userId: payload.userId, hostId: room.hostId?.toString?.() })
       return NextResponse.json({ success: false, error: 'Only the host can start the next round' }, { status: 403 })
     }
 
     if (room.status !== 'in_progress') {
+      routeWarn('invalid_room_status', { roomId, status: room.status })
       return NextResponse.json({ success: false, error: 'Room is not in progress' }, { status: 400 })
     }
 
     if (room.currentRound >= room.settings.roundCount) {
+      routeWarn('max_rounds_reached', { roomId, currentRound: room.currentRound, roundCount: room.settings.roundCount })
       return NextResponse.json({ success: false, error: 'Max rounds reached' }, { status: 400 })
     }
 
+    const expectedRound = room.currentRound
     const usedThemeIds = room.usedThemeIds || []
     let correctTheme = await selectThemeForRoom(room, usedThemeIds)
 
@@ -48,7 +64,7 @@ export async function POST(req: NextRequest) {
         { $sample: { size: 1 } }
       ])
       correctTheme = themes[0]
-      console.warn('[QuizRoomTheme] Next route fallback selected unrestricted theme', {
+      routeWarn('fallback_theme_selected_unrestricted', {
         roomId: roomId,
         themeId: correctTheme?._id?.toString?.() || correctTheme?._id,
         animeId: correctTheme?.anilistId,
@@ -60,6 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!correctTheme) {
+      routeWarn('no_theme_available', { roomId, usedThemeCount: usedThemeIds.length })
       return NextResponse.json({ success: false, error: 'No theme available' }, { status: 404 })
     }
 
@@ -68,7 +85,7 @@ export async function POST(req: NextRequest) {
     const options = await generateRoundOptions(correctTheme, room.settings.guessType)
 
     const newRound = {
-      roundNumber: room.currentRound + 1,
+      roundNumber: expectedRound + 1,
       themeId: correctTheme._id.toString(),
       videoUrl: correctTheme.audioUrl,
       correctAnswer: correctAnswer,
@@ -87,27 +104,62 @@ export async function POST(req: NextRequest) {
       artistName: correctTheme.artistName,
     }
 
-    room.currentRound += 1
-    room.rounds.push(newRound)
-    room.usedThemeIds.push(correctTheme._id.toString())
-    room.timerAuthority = Date.now().toString()
+    const timerAuthority = Date.now().toString()
+    const updateResult = await QuizRoom.updateOne(
+      { _id: roomId, status: 'in_progress', currentRound: expectedRound },
+      {
+        $inc: { currentRound: 1 },
+        $push: {
+          rounds: newRound,
+          usedThemeIds: correctTheme._id.toString(),
+        },
+        $set: { timerAuthority },
+      }
+    )
+    if (!updateResult.modifiedCount) {
+      const latestRoom = await QuizRoom.findById(roomId)
+      routeWarn('duplicate_next_ignored', {
+        roomId,
+        expectedRound,
+        actualRound: latestRoom?.currentRound,
+      })
+      return NextResponse.json({
+        success: true,
+        alreadyAdvanced: true,
+        currentRound: latestRoom?.currentRound ?? expectedRound,
+      })
+    }
 
-    await room.save()
+    const updatedRoom = await QuizRoom.findById(roomId)
+    const persistedRound = updatedRoom?.currentRound ?? newRound.roundNumber
+    const proxiedVideoUrl = toProxyUrl(newRound.videoUrl)
+    routeLog('round_persisted', {
+      roomId,
+      round: persistedRound,
+      roundCount: updatedRoom?.settings?.roundCount ?? room.settings.roundCount,
+      timeLimitSeconds: updatedRoom?.settings?.timeLimitSeconds || room.settings.timeLimitSeconds || 30,
+      themeId: newRound.themeId,
+      sourceVideoUrl: newRound.videoUrl,
+      proxiedVideoUrl,
+      usedThemeCount: updatedRoom?.usedThemeIds?.length ?? usedThemeIds.length + 1,
+      timerAuthority,
+    })
 
     // Trigger pusher event
     await pusherServer.trigger(`presence-quiz-room-${roomId}`, 'room:round-started', {
-      round: room.currentRound,
+      round: persistedRound,
       theme: {
-        videoUrl: newRound.videoUrl,
+        videoUrl: proxiedVideoUrl,
         options: newRound.options,
       },
       startedAt: newRound.startedAt,
-      timeLimitSeconds: room.settings.timeLimitSeconds || 30,
+      timeLimitSeconds: updatedRoom?.settings?.timeLimitSeconds || room.settings.timeLimitSeconds || 30,
     })
+    routeLog('round_broadcasted', { roomId, round: persistedRound, event: 'room:round-started', proxiedVideoUrl })
 
-    return NextResponse.json({ success: true, room })
+    return NextResponse.json({ success: true, room: updatedRoom ?? room })
   } catch (error) {
-    console.error('Quiz room next round error:', error)
+    console.error(`[${routeTag}] route_exception`, error)
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }

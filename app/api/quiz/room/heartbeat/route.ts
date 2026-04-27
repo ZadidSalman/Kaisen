@@ -17,18 +17,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing roomId' }, { status: 400 })
     }
 
+    const now = new Date()
+    const heartbeatUpdate = await QuizRoom.updateOne(
+      { _id: roomId, 'players.userId': payload.userId },
+      { $set: { 'players.$.lastSeenAt': now } }
+    )
+    if (!heartbeatUpdate.matchedCount) {
+      return NextResponse.json({ success: false, error: 'Room closed' }, { status: 404 })
+    }
+
     let room = await QuizRoom.findById(roomId)
     if (!room) {
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
-    }
-
-    // 1. Update current player's heartbeat
-    const player = room.players.find((p: any) => p.userId === payload.userId)
-    if (player) {
-      player.lastSeenAt = new Date()
-      await room.save()
-    } else {
-      return NextResponse.json({ success: false, error: 'Room closed' }, { status: 404 })
     }
 
     // 2. Perform background cleanup

@@ -30,45 +30,60 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   const [submitting, setSubmitting] = useState(false)
   const [currentRound, setCurrentRound] = useState(initialRoom.currentRound || 0)
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false)
+  const [audioBlocked, setAudioBlocked] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const fadeIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const currentRoundRef = useRef(initialRoom.currentRound || 0)
+  const nextInFlightRef = useRef(false)
+  const playbackTokenRef = useRef(0)
+  const blockedToastShownRef = useRef(false)
 
-  const [audio] = useState(() => {
-    if (typeof Audio !== 'undefined') {
-      const a = new Audio()
-      a.preload = 'auto'
-      // Set these for better mobile compatibility
-      a.setAttribute('playsinline', 'true')
-      a.setAttribute('webkit-playsinline', 'true')
-      return a
+  const [hiddenMedia] = useState(() => {
+    if (typeof document !== 'undefined') {
+      const media = document.createElement('video')
+      media.preload = 'auto'
+      media.playsInline = true
+      return media
     }
     return null
   })
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  
-  useEffect(() => {
-    if (audio) {
-      audioRef.current = audio
-    }
-  }, [audio])
+  const mediaRef = useRef<HTMLVideoElement | null>(null)
 
-  // Global unmute listener
   useEffect(() => {
-    const handleGlobalClick = () => {
-      if (audioRef.current && audioRef.current.muted) {
-        console.log('[Audio] Global click detected, attempting unmute')
-        audioRef.current.muted = false
-        audioRef.current.play().catch(() => {})
-      }
+    if (hiddenMedia) {
+      mediaRef.current = hiddenMedia
     }
-    window.addEventListener('click', handleGlobalClick)
-    window.addEventListener('touchstart', handleGlobalClick)
-    return () => {
-      window.removeEventListener('click', handleGlobalClick)
-      window.removeEventListener('touchstart', handleGlobalClick)
+  }, [hiddenMedia])
+
+  const logMediaEvent = useCallback((event: string, extra?: Record<string, unknown>) => {
+    console.log('[QuizRoomAudio]', {
+      roomId: room._id,
+      round: currentRoundRef.current,
+      event,
+      token: playbackTokenRef.current,
+      ...extra,
+    })
+  }, [room._id])
+
+  const unlockMedia = useCallback(async (source: 'ready' | 'start' | 'next' | 'manual') => {
+    const media = mediaRef.current
+    if (!media) return false
+    try {
+      media.muted = true
+      media.src = 'data:video/webm;base64,GkXfo0AgQoaBAULygQFC8oEEQvKBAULygQFC8oEA'
+      await media.play()
+      media.pause()
+      media.currentTime = 0
+      media.src = ''
+      setIsAudioUnlocked(true)
+      setAudioBlocked(false)
+      logMediaEvent('unlock_success', { source })
+      return true
+    } catch (error: any) {
+      logMediaEvent('unlock_failed', { source, name: error?.name, message: error?.message })
+      return false
     }
-  }, [])
+  }, [logMediaEvent])
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const startedAtRef = useRef<number>(0)
@@ -128,11 +143,30 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
     }, 500)
   }, [stopTimer, isHost, handleTimeout])
 
-  // Load audio, play it, then start timer 1s after it begins
+  // Load hidden media, play it, then start timer shortly after it begins
   const loadAndPlayAudio = useCallback((url: string, serverStartedAt: number, limit: number) => {
-    console.log('[Audio] loadAndPlayAudio called:', url);
-    const audio = audioRef.current
-    if (!audio) return
+    const media = mediaRef.current
+    if (!media) return
+    const playbackToken = ++playbackTokenRef.current
+    logMediaEvent('round_play_attempt', {
+      url,
+      isProxiedUrl: url.startsWith('/api/media/proxy'),
+      extension: url.split('?')[0]?.split('.').pop()?.toLowerCase(),
+      isAudioUnlocked,
+    })
+
+    const onPlayStateChanged = () => setAudioBlocked(media.paused || media.muted)
+    media.onplay = onPlayStateChanged
+    media.onplaying = onPlayStateChanged
+    media.onpause = onPlayStateChanged
+    media.onerror = () => {
+      logMediaEvent('media_error', {
+        code: media.error?.code,
+        message: media.error?.message,
+        readyState: media.readyState,
+        networkState: media.networkState,
+      })
+    }
 
     // Stop any existing fade-outs
     if (fadeIntervalRef.current) {
@@ -140,53 +174,77 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       fadeIntervalRef.current = null
     }
 
-    audio.pause()
-    audio.muted = false 
-    audio.volume = 0.5
-    
+    media.pause()
+    media.currentTime = 0
+    media.muted = false
+    media.volume = 0.5
+
     let timerStarted = false
-    const triggerTimer = () => {
+    const triggerTimer = (reason: string) => {
+      if (playbackToken !== playbackTokenRef.current) return
       if (timerStarted) return
       timerStarted = true
-      console.log('[Audio] Triggering timer start');
+      logMediaEvent('timer_started', { reason })
       setTimeout(() => startTimer(serverStartedAt, limit), 1000)
     }
 
-    // Safety fallback for timer if oncanplay never fires
+    // Safety fallback for timer if media events never fire
     const fallback = setTimeout(() => {
       if (!timerStarted) {
-        console.warn('[Audio] canplay timeout - forcing timer start')
-        triggerTimer()
+        logMediaEvent('canplay_timeout')
+        triggerTimer('canplay_timeout')
       }
     }, 5000)
 
-    audio.oncanplay = () => {
-      console.log('[Audio] oncanplay fired');
+    media.oncanplay = () => {
+      if (playbackToken !== playbackTokenRef.current) return
       clearTimeout(fallback)
-      triggerTimer()
+      logMediaEvent('canplay_fired', { readyState: media.readyState })
+      triggerTimer('canplay')
     }
 
     // Attempt playback
     const attemptPlay = async () => {
       try {
-        await audio.play()
-        console.log('[Audio] play() success (unmuted)');
+        if (playbackToken !== playbackTokenRef.current) return
+        await media.play()
+        setAudioBlocked(false)
+        logMediaEvent('play_success', { muted: false })
+        triggerTimer('play_success_unmuted')
       } catch (err) {
-        console.warn('[Audio] play() unmuted failed, trying muted fallback:', err)
-        audio.muted = true
+        if (playbackToken !== playbackTokenRef.current) return
+        logMediaEvent('play_failed_unmuted', {
+          name: (err as any)?.name,
+          message: (err as any)?.message,
+        })
+        media.muted = true
         try {
-          await audio.play()
-          console.log('[Audio] play() success (muted)');
+          if (playbackToken !== playbackTokenRef.current) return
+          await media.play()
+          setAudioBlocked(false)
+          logMediaEvent('play_success_muted')
+          triggerTimer('play_success_muted')
+          if (!blockedToastShownRef.current) {
+            blockedToastShownRef.current = true
+            toast.warning('Audio blocked by browser. Tap music button to unmute.')
+          }
         } catch (finalErr) {
-          console.error('[Audio] play() failed even when muted:', finalErr)
-          triggerTimer() 
+          if (playbackToken !== playbackTokenRef.current) return
+          setAudioBlocked(true)
+          logMediaEvent('play_failed_muted', {
+            name: (finalErr as any)?.name,
+            message: (finalErr as any)?.message,
+          })
+          toast.error(`Round ${currentRoundRef.current}: audio failed to start.`)
+          triggerTimer('play_failed')
         }
       }
     }
 
-    audio.src = url
+    media.src = url
+    media.load()
     attemptPlay()
-  }, [audio, startTimer])
+  }, [isAudioUnlocked, logMediaEvent, startTimer])
 
   useEffect(() => {
     if (!user?.id) return
@@ -278,16 +336,16 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
       stopTimer()
       // Fade out audio
-      if (audioRef.current) {
-        const audio = audioRef.current
+      if (mediaRef.current) {
+        const media = mediaRef.current
         if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
         fadeIntervalRef.current = setInterval(() => {
-          if (audio.volume > 0.05) { audio.volume = Math.max(0, audio.volume - 0.1) }
+          if (media.volume > 0.05) { media.volume = Math.max(0, media.volume - 0.1) }
           else { 
             clearInterval(fadeIntervalRef.current!)
             fadeIntervalRef.current = null
-            audio.pause()
-            audio.volume = 0.6 
+            media.pause()
+            media.volume = 0.6 
           }
         }, 80)
       }
@@ -313,9 +371,9 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       channel.unbind_all()
       pusherClient.unsubscribe(channelName)
       stopTimer()
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current.src = ''
+      if (mediaRef.current) {
+        mediaRef.current.pause()
+        mediaRef.current.src = ''
       }
     }
   }, [user?.id, room._id, myUserId, loadAndPlayAudio, startTimer, stopTimer, upsertRoundAnswer])
@@ -370,7 +428,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       const res = await authFetch('/api/quiz/room/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: room._id, submittedAnswer: option }),
+        body: JSON.stringify({ roomId: room._id, submittedAnswer: option, roundNumber: answerRound }),
       })
       const data = await res.json()
 
@@ -413,6 +471,11 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
         setSelected(null)
         setAutoLocked(true)
         toast.warning('Auto-locked! 🔒')
+      } else if (e?.message?.includes('round_mismatch')) {
+        setSelected(null)
+        setAnswered(false)
+        toast.info('Round changed while submitting. Please answer again.')
+        console.warn('[QuizRoomAnswer] round_mismatch', { roomId: room._id, submittedRound: answerRound })
       } else {
         setSelected(null)
         setAnswered(false)
@@ -425,16 +488,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
   const handleReady = async () => {
     try {
-      // Unlock audio context for mobile/safari/chrome
-      if (audioRef.current) {
-        setIsAudioUnlocked(true)
-        // Silent ping to unlock
-        audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== ";
-        audioRef.current.play().then(() => {
-          audioRef.current?.pause();
-          audioRef.current!.currentTime = 0;
-        }).catch(() => {});
-      }
+      await unlockMedia('ready')
       await authFetch('/api/quiz/room/ready', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -445,14 +499,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
   const handleStart = async () => {
     try {
-      // Unlock audio context
-      if (audioRef.current) {
-        setIsAudioUnlocked(true)
-        audioRef.current.play().then(() => {
-          audioRef.current?.pause();
-          audioRef.current!.currentTime = 0;
-        }).catch(() => {});
-      }
+      await unlockMedia('start')
       await authFetch('/api/quiz/room/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -475,21 +522,23 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   }
 
   const handleNext = async () => {
+    if (nextInFlightRef.current) return
+    if (currentRoundRef.current >= totalRounds || reveal?.gameOver) return
+    nextInFlightRef.current = true
     try {
-      // Unlock audio context
-      if (audioRef.current) {
-        setIsAudioUnlocked(true)
-        audioRef.current.play().then(() => {
-          audioRef.current?.pause();
-          audioRef.current!.currentTime = 0;
-        }).catch(() => {});
-      }
+      await unlockMedia('next')
       await authFetch('/api/quiz/room/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomId: room._id }),
       })
-    } catch (e: any) { toast.error(e?.message || 'Failed') }
+    } catch (e: any) {
+      if (!String(e?.message || '').includes('alreadyAdvanced')) {
+        toast.error(e?.message || 'Failed')
+      }
+    } finally {
+      nextInFlightRef.current = false
+    }
   }
 
 
@@ -758,13 +807,20 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
           ))}
           
           {/* Manual Audio Resume Button if blocked */}
-          {!answered && (
+          {!answered && audioBlocked && (
             <button 
               onClick={() => {
-                if (audioRef.current) {
-                  audioRef.current.muted = false;
-                  audioRef.current.play().catch(() => {});
-                  setIsAudioUnlocked(true);
+                const media = mediaRef.current
+                if (media) {
+                  media.muted = false
+                  media.play()
+                    .then(() => {
+                      setIsAudioUnlocked(true)
+                      setAudioBlocked(false)
+                    })
+                    .catch((error: any) => {
+                      logMediaEvent('manual_resume_failed', { name: error?.name, message: error?.message })
+                    })
                 }
               }}
               className="absolute -right-12 top-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent interactive"

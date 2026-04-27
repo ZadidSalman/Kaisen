@@ -7,7 +7,17 @@ import { generateRoundOptions, getCorrectAnswer, selectThemeForRoom } from '@/li
 
 export const dynamic = 'force-dynamic'
 
+const toProxyUrl = (sourceUrl: string | null | undefined) =>
+  sourceUrl ? `/api/media/proxy?url=${encodeURIComponent(sourceUrl)}` : ''
+
 export async function POST(req: NextRequest) {
+  const routeTag = 'QuizRoomStart'
+  const routeLog = (event: string, extra?: Record<string, unknown>) => {
+    console.log(`[${routeTag}] ${event}`, extra ?? {})
+  }
+  const routeWarn = (event: string, extra?: Record<string, unknown>) => {
+    console.warn(`[${routeTag}] ${event}`, extra ?? {})
+  }
   try {
     await dbConnect()
     const session = await getSession()
@@ -18,30 +28,36 @@ export async function POST(req: NextRequest) {
 
     const { roomId } = await req.json()
     if (!roomId) {
+      routeWarn('missing_room_id')
       return NextResponse.json({ success: false, error: 'Missing roomId' }, { status: 400 })
     }
 
     const room = await QuizRoom.findById(roomId)
     if (!room) {
+      routeWarn('room_not_found', { roomId })
       return NextResponse.json({ success: false, error: 'Room not found' }, { status: 404 })
     }
 
     if (room.hostId && room.hostId.toString() !== payload.userId) {
+      routeWarn('forbidden_non_host_start', { roomId, userId: payload.userId, hostId: room.hostId?.toString?.() })
       return NextResponse.json({ success: false, error: 'Only the host can start the room' }, { status: 403 })
     }
 
     if (room.status !== 'waiting') {
+      routeWarn('invalid_room_status', { roomId, status: room.status })
       return NextResponse.json({ success: false, error: 'Room is already in progress or ended' }, { status: 400 })
     }
 
     if (room.roomType === 'duel') {
       if (room.players.length !== 2) {
+        routeWarn('duel_invalid_player_count', { roomId, playerCount: room.players.length })
         return NextResponse.json({ success: false, error: 'You need exactly 2 players to start a Duel.' }, { status: 400 })
       }
       
       // Duel: both players must be ready (no host concept)
       const allReady = room.players.every((p: any) => p.ready)
       if (!allReady) {
+        routeWarn('duel_not_all_ready', { roomId })
         return NextResponse.json({ success: false, error: 'Both players must be ready!' }, { status: 400 })
       }
     }
@@ -55,7 +71,7 @@ export async function POST(req: NextRequest) {
         { $sample: { size: 1 } }
       ])
       correctTheme = themes[0]
-      console.warn('[QuizRoomTheme] Start route fallback selected unrestricted theme', {
+      routeWarn('fallback_theme_selected_unrestricted', {
         roomId: roomId,
         themeId: correctTheme?._id?.toString?.() || correctTheme?._id,
         animeId: correctTheme?.anilistId,
@@ -67,6 +83,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!correctTheme) {
+      routeWarn('no_theme_available', { roomId })
       return NextResponse.json({ success: false, error: 'No theme available' }, { status: 404 })
     }
 
@@ -101,21 +118,33 @@ export async function POST(req: NextRequest) {
     room.timerAuthority = Date.now().toString() // Set a fresh timer authority
 
     await room.save()
+    const proxiedVideoUrl = toProxyUrl(newRound.videoUrl)
+    routeLog('round_persisted', {
+      roomId,
+      round: 1,
+      roundCount: room.settings.roundCount,
+      timeLimitSeconds: room.settings.timeLimitSeconds || 30,
+      themeId: newRound.themeId,
+      sourceVideoUrl: newRound.videoUrl,
+      proxiedVideoUrl,
+      timerAuthority: room.timerAuthority,
+    })
 
     // Trigger pusher event
     await pusherServer.trigger(`presence-quiz-room-${roomId}`, 'room:round-started', {
       round: 1,
       theme: {
-        videoUrl: newRound.videoUrl,
+        videoUrl: proxiedVideoUrl,
         options: newRound.options,
       },
       startedAt: newRound.startedAt,
       timeLimitSeconds: room.settings.timeLimitSeconds || 30,
     })
+    routeLog('round_broadcasted', { roomId, round: 1, event: 'room:round-started', proxiedVideoUrl })
 
     return NextResponse.json({ success: true, room })
   } catch (error) {
-    console.error('Quiz room start error:', error)
+    console.error(`[${routeTag}] route_exception`, error)
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
   }
 }

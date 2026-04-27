@@ -16,15 +16,28 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id
-    const { roomId, submittedAnswer } = await req.json()
+    const { roomId, submittedAnswer, roundNumber } = await req.json()
 
     if (!roomId) {
       return NextResponse.json({ success: false, error: 'Missing roomId' }, { status: 400 })
+    }
+    if (typeof roundNumber !== 'number') {
+      return NextResponse.json({ success: false, error: 'Missing roundNumber' }, { status: 400 })
     }
 
     const room = await QuizRoom.findById(roomId)
     if (!room || room.status !== 'in_progress') {
       return NextResponse.json({ success: false, error: 'Room not in progress' }, { status: 400 })
+    }
+    if (roundNumber !== room.currentRound) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `round_mismatch: expected ${room.currentRound}, got ${roundNumber}`,
+          currentRound: room.currentRound,
+        },
+        { status: 409 }
+      )
     }
 
     const roundIndex = room.currentRound - 1
