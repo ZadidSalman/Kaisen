@@ -1,0 +1,308 @@
+[
+  {
+    "url": "http://localhost:3000/",
+    "total": 0.00339,
+    "ttfb": 0.003347,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/admin/seed-popular",
+    "total": 8.014572,
+    "ttfb": 0.0,
+    "code": 0
+  },
+  {
+    "url": "http://localhost:3000/api/auth/anilist/callback",
+    "total": 0.007517,
+    "ttfb": 0.007344,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/auth/anilist/url",
+    "total": 0.004005,
+    "ttfb": 0.003871,
+    "code": 500
+  },
+  {
+    "url": "http://localhost:3000/api/auth/login",
+    "total": 0.003716,
+    "ttfb": 0.003701,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/auth/logout",
+    "total": 0.003406,
+    "ttfb": 0.00339,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/auth/refresh",
+    "total": 0.003243,
+    "ttfb": 0.003225,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/auth/register",
+    "total": 0.003485,
+    "ttfb": 0.00347,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/cron/season-reset",
+    "total": 0.004224,
+    "ttfb": 0.004078,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/download",
+    "total": 0.004056,
+    "ttfb": 0.003916,
+    "code": 400
+  },
+  {
+    "url": "http://localhost:3000/api/history",
+    "total": 0.004242,
+    "ttfb": 0.004082,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/history/check",
+    "total": 0.004139,
+    "ttfb": 0.003972,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/leaderboard",
+    "total": 0.063638,
+    "ttfb": 0.063414,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/media/proxy",
+    "total": 0.0043,
+    "ttfb": 0.004136,
+    "code": 400
+  },
+  {
+    "url": "http://localhost:3000/api/notifications",
+    "total": 0.00437,
+    "ttfb": 0.004215,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/playlists",
+    "total": 0.004268,
+    "ttfb": 0.004112,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/pusher/auth",
+    "total": 0.003032,
+    "ttfb": 0.003017,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/invite/respond",
+    "total": 0.003611,
+    "ttfb": 0.003596,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/invite/send",
+    "total": 0.003888,
+    "ttfb": 0.003874,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/leaderboard",
+    "total": 0.1152,
+    "ttfb": 0.11505,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/question",
+    "total": 0.116928,
+    "ttfb": 0.116773,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/answer",
+    "total": 0.003905,
+    "ttfb": 0.003889,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/create",
+    "total": 0.003738,
+    "ttfb": 0.003723,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/heartbeat",
+    "total": 0.003879,
+    "ttfb": 0.003861,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/join",
+    "total": 0.003478,
+    "ttfb": 0.003464,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/leave",
+    "total": 0.00413,
+    "ttfb": 0.004111,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/next",
+    "total": 0.003772,
+    "ttfb": 0.003757,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/public",
+    "total": 0.004195,
+    "ttfb": 0.004176,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/ready",
+    "total": 0.003775,
+    "ttfb": 0.003758,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/settings",
+    "total": 0.003991,
+    "ttfb": 0.003975,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/start",
+    "total": 0.003802,
+    "ttfb": 0.003786,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/timeout",
+    "total": 0.004381,
+    "ttfb": 0.004366,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/timer-end",
+    "total": 0.003826,
+    "ttfb": 0.003811,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/room/update-settings",
+    "total": 0.003813,
+    "ttfb": 0.003796,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/quiz/submit",
+    "total": 0.003838,
+    "ttfb": 0.003821,
+    "code": 405
+  },
+  {
+    "url": "http://localhost:3000/api/rank/me",
+    "total": 0.004187,
+    "ttfb": 0.004026,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/search",
+    "total": 0.003481,
+    "ttfb": 0.003318,
+    "code": 400
+  },
+  {
+    "url": "http://localhost:3000/api/search?q=naruto&type=ALL&page=1",
+    "total": 0.093903,
+    "ttfb": 0.093635,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/social/friends-activity",
+    "total": 0.003352,
+    "ttfb": 0.003177,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/stats/live",
+    "total": 0.158432,
+    "ttfb": 0.158064,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/stats/top-artists",
+    "total": 0.00411,
+    "ttfb": 0.00397,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/themes/banner-covers",
+    "total": 0.109593,
+    "ttfb": 0.109393,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/themes/favorites",
+    "total": 0.003527,
+    "ttfb": 0.00338,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/themes/library",
+    "total": 0.004427,
+    "ttfb": 0.004282,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/themes/popular",
+    "total": 0.143985,
+    "ttfb": 0.143761,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/themes/popular?page=1",
+    "total": 0.057658,
+    "ttfb": 0.057466,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/themes/random",
+    "total": 0.051757,
+    "ttfb": 0.051588,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/themes/seasonal",
+    "total": 0.004072,
+    "ttfb": 0.003916,
+    "code": 400
+  },
+  {
+    "url": "http://localhost:3000/api/themes/seasonal?season=SPRING&year=2026&page=1",
+    "total": 0.055622,
+    "ttfb": 0.055421,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/api/user/library/count",
+    "total": 0.004389,
+    "ttfb": 0.004239,
+    "code": 401
+  },
+  {
+    "url": "http://localhost:3000/api/users/me",
+    "total": 0.004178,
+    "ttfb": 0.004019,
+    "code": 401
+  }
+]

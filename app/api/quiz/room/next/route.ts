@@ -10,6 +10,29 @@ export const dynamic = 'force-dynamic'
 const toProxyUrl = (sourceUrl: string | null | undefined) =>
   sourceUrl ? `/api/media/proxy?url=${encodeURIComponent(sourceUrl)}` : ''
 
+const buildMediaCandidates = (theme: any): string[] => {
+  const directCandidates = [
+    theme?.videoUrl,
+    theme?.audioUrl,
+    ...(Array.isArray(theme?.entries)
+      ? theme.entries.flatMap((entry: any) =>
+          Array.isArray(entry?.videoSources) ? entry.videoSources.map((source: any) => source?.url) : []
+        )
+      : []),
+  ].filter((url): url is string => typeof url === 'string' && url.length > 0)
+
+  const seen = new Set<string>()
+  const proxiedCandidates: string[] = []
+  for (const directUrl of directCandidates) {
+    const proxied = toProxyUrl(directUrl)
+    if (!proxied || seen.has(proxied)) continue
+    seen.add(proxied)
+    proxiedCandidates.push(proxied)
+  }
+
+  return proxiedCandidates
+}
+
 export async function POST(req: NextRequest) {
   const routeTag = 'QuizRoomNext'
   const routeLog = (event: string, extra?: Record<string, unknown>) => {
@@ -132,7 +155,8 @@ export async function POST(req: NextRequest) {
 
     const updatedRoom = await QuizRoom.findById(roomId)
     const persistedRound = updatedRoom?.currentRound ?? newRound.roundNumber
-    const proxiedVideoUrl = toProxyUrl(newRound.videoUrl)
+    const mediaCandidates = buildMediaCandidates(correctTheme)
+    const proxiedVideoUrl = mediaCandidates[0] || toProxyUrl(newRound.videoUrl)
     routeLog('round_persisted', {
       roomId,
       round: persistedRound,
@@ -141,6 +165,7 @@ export async function POST(req: NextRequest) {
       themeId: newRound.themeId,
       sourceVideoUrl: newRound.videoUrl,
       proxiedVideoUrl,
+      mediaCandidatesCount: mediaCandidates.length,
       usedThemeCount: updatedRoom?.usedThemeIds?.length ?? usedThemeIds.length + 1,
       timerAuthority,
     })
@@ -150,6 +175,7 @@ export async function POST(req: NextRequest) {
       round: persistedRound,
       theme: {
         videoUrl: proxiedVideoUrl,
+        mediaCandidates,
         options: newRound.options,
       },
       startedAt: newRound.startedAt,

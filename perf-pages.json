@@ -1,0 +1,92 @@
+[
+  {
+    "url": "http://localhost:3000/favorites",
+    "total": 0.004747,
+    "ttfb": 0.004685,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/leaderboard",
+    "total": 0.019068,
+    "ttfb": 0.016858,
+    "code": 307
+  },
+  {
+    "url": "http://localhost:3000/library",
+    "total": 0.00497,
+    "ttfb": 0.004882,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/login",
+    "total": 0.003837,
+    "ttfb": 0.003777,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/notifications",
+    "total": 0.004022,
+    "ttfb": 0.003934,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/page.tsx",
+    "total": 0.004472,
+    "ttfb": 0.004411,
+    "code": 404
+  },
+  {
+    "url": "http://localhost:3000/playlists",
+    "total": 0.003653,
+    "ttfb": 0.003592,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/quiz",
+    "total": 0.003904,
+    "ttfb": 0.003841,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/quiz/multiplayer",
+    "total": 0.003588,
+    "ttfb": 0.00351,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/quiz/play",
+    "total": 0.003255,
+    "ttfb": 0.003202,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/register",
+    "total": 0.003272,
+    "ttfb": 0.003223,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/search",
+    "total": 0.003368,
+    "ttfb": 0.003316,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/settings",
+    "total": 0.003451,
+    "ttfb": 0.003404,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/settings/profile",
+    "total": 0.003125,
+    "ttfb": 0.003076,
+    "code": 200
+  },
+  {
+    "url": "http://localhost:3000/social",
+    "total": 0.003185,
+    "ttfb": 0.003128,
+    "code": 200
+  }
+]

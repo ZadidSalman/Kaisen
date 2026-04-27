@@ -18,7 +18,6 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   const [room, setRoom] = useState<QuizRoomData>(initialRoom)
   const [phase, setPhase] = useState<GamePhase>(initialRoom.status === 'in_progress' ? 'game' : 'lobby')
   const [options, setOptions] = useState<string[]>([])
-  const [videoUrl, setVideoUrl] = useState<string>('')
   const [selected, setSelected] = useState<string | null>(null)
   const [answered, setAnswered] = useState(false)
   const [autoLocked, setAutoLocked] = useState(false)
@@ -144,14 +143,20 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   }, [stopTimer, isHost, handleTimeout])
 
   // Load hidden media, play it, then start timer shortly after it begins
-  const loadAndPlayAudio = useCallback((url: string, serverStartedAt: number, limit: number) => {
+  const loadAndPlayAudio = useCallback((candidateUrls: string[], serverStartedAt: number, limit: number) => {
     const media = mediaRef.current
     if (!media) return
     const playbackToken = ++playbackTokenRef.current
+    const usableCandidates = candidateUrls.filter(url => typeof url === 'string' && url.length > 0)
+    if (!usableCandidates.length) {
+      logMediaEvent('round_play_attempt_skipped', { reason: 'no_media_candidates' })
+      setAudioBlocked(true)
+      setTimeout(() => startTimer(serverStartedAt, limit), 1000)
+      return
+    }
     logMediaEvent('round_play_attempt', {
-      url,
-      isProxiedUrl: url.startsWith('/api/media/proxy'),
-      extension: url.split('?')[0]?.split('.').pop()?.toLowerCase(),
+      candidates: usableCandidates.length,
+      primaryUrl: usableCandidates[0],
       isAudioUnlocked,
     })
 
@@ -159,15 +164,6 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
     media.onplay = onPlayStateChanged
     media.onplaying = onPlayStateChanged
     media.onpause = onPlayStateChanged
-    media.onerror = () => {
-      logMediaEvent('media_error', {
-        code: media.error?.code,
-        message: media.error?.message,
-        readyState: media.readyState,
-        networkState: media.networkState,
-      })
-    }
-
     // Stop any existing fade-outs
     if (fadeIntervalRef.current) {
       clearInterval(fadeIntervalRef.current)
@@ -203,17 +199,26 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       triggerTimer('canplay')
     }
 
-    // Attempt playback
-    const attemptPlay = async () => {
+    const attemptPlayForCandidate = async (url: string, candidateIndex: number) => {
       try {
         if (playbackToken !== playbackTokenRef.current) return
+        logMediaEvent('candidate_attempt', {
+          candidateIndex,
+          candidatesTotal: usableCandidates.length,
+          url,
+          isProxiedUrl: url.startsWith('/api/media/proxy'),
+          extension: url.split('?')[0]?.split('.').pop()?.toLowerCase(),
+        })
+        media.src = url
+        media.load()
         await media.play()
         setAudioBlocked(false)
-        logMediaEvent('play_success', { muted: false })
+        logMediaEvent('play_success', { muted: false, candidateIndex })
         triggerTimer('play_success_unmuted')
       } catch (err) {
         if (playbackToken !== playbackTokenRef.current) return
         logMediaEvent('play_failed_unmuted', {
+          candidateIndex,
           name: (err as any)?.name,
           message: (err as any)?.message,
         })
@@ -222,7 +227,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
           if (playbackToken !== playbackTokenRef.current) return
           await media.play()
           setAudioBlocked(false)
-          logMediaEvent('play_success_muted')
+          logMediaEvent('play_success_muted', { candidateIndex })
           triggerTimer('play_success_muted')
           if (!blockedToastShownRef.current) {
             blockedToastShownRef.current = true
@@ -230,20 +235,34 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
           }
         } catch (finalErr) {
           if (playbackToken !== playbackTokenRef.current) return
-          setAudioBlocked(true)
           logMediaEvent('play_failed_muted', {
+            candidateIndex,
             name: (finalErr as any)?.name,
             message: (finalErr as any)?.message,
           })
-          toast.error(`Round ${currentRoundRef.current}: audio failed to start.`)
-          triggerTimer('play_failed')
+          const nextCandidate = usableCandidates[candidateIndex + 1]
+          if (nextCandidate) {
+            await attemptPlayForCandidate(nextCandidate, candidateIndex + 1)
+            return
+          }
+          setAudioBlocked(true)
+          toast.error(`Round ${currentRoundRef.current}: audio unavailable, timer continuing.`)
+          triggerTimer('play_failed_all_candidates')
         }
       }
     }
 
-    media.src = url
-    media.load()
-    attemptPlay()
+    media.onerror = () => {
+      logMediaEvent('media_error', {
+        code: media.error?.code,
+        message: media.error?.message,
+        readyState: media.readyState,
+        networkState: media.networkState,
+        currentSrc: media.currentSrc,
+      })
+    }
+
+    attemptPlayForCandidate(usableCandidates[0], 0)
   }, [isAudioUnlocked, logMediaEvent, startTimer])
 
   useEffect(() => {
@@ -293,7 +312,6 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       setTimeLimitSeconds(limit)
       setTimeLeft(limit) // Reset display immediately
       setOptions(data.theme.options ?? [])
-      setVideoUrl(data.theme.videoUrl ?? '')
       setSelected(null)
       setAnswered(false)
       setAutoLocked(false)
@@ -303,7 +321,10 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       setCurrentRound(data.round)
       setPhase('game')
       // Load audio and start timer 1s after playback begins
-      loadAndPlayAudio(data.theme.videoUrl, serverStartedAt, limit)
+      const mediaCandidates: string[] = Array.isArray(data.theme.mediaCandidates)
+        ? data.theme.mediaCandidates
+        : [data.theme.videoUrl].filter(Boolean)
+      loadAndPlayAudio(mediaCandidates, serverStartedAt, limit)
     })
     channel.bind('room:player-answered', (data: any) => {
       if (typeof data.round === 'number' && data.round !== currentRoundRef.current) {
@@ -553,9 +574,27 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
     router.push('/quiz/multiplayer')
   }
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(room.roomCode)
-    toast.success('Room code copied! 📋')
+  const handleCopyCode = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(room.roomCode)
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea')
+        textArea.value = room.roomCode
+        textArea.setAttribute('readonly', '')
+        textArea.style.position = 'fixed'
+        textArea.style.opacity = '0'
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      } else {
+        throw new Error('Clipboard unavailable')
+      }
+      toast.success('Room code copied! 📋')
+    } catch {
+      toast.error('Failed to copy room code')
+    }
   }
 
   const myScore = room.players.find(p => p.userId === myUserId)?.totalScore ?? 0
@@ -629,11 +668,9 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
                   </div>
                   <span className="flex-1 font-display font-bold text-sm">{p.username}</span>
                   {room.hostId === p.userId && <Crown className="w-4 h-4 text-yellow-500" />}
-                  {isDuel && (
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.ready ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {p.ready ? 'Ready' : 'Not Ready'}
-                    </span>
-                  )}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.ready ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {p.ready ? 'Ready' : 'Not Ready'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -667,19 +704,18 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
             </div>
           </motion.div>
 
-          {isDuel ? (
-            <motion.button whileTap={{ scale: 0.97 }} onClick={handleReady}
-              className={`w-full py-4 rounded-full font-display font-bold text-lg shadow-lg transition-colors ${myReady ? 'bg-green-500 text-white' : 'bg-accent text-white'}`}>
-              {myReady ? '✅ Ready!' : 'Click to Ready'}
-            </motion.button>
-          ) : isHost ? (
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleReady}
+            className={`w-full py-4 rounded-full font-display font-bold text-lg shadow-lg transition-colors ${myReady ? 'bg-green-500 text-white' : 'bg-accent text-white'}`}>
+            {myReady ? '✅ Ready!' : 'Click to Ready'}
+          </motion.button>
+          {isHost ? (
             <motion.button whileTap={{ scale: 0.97 }} onClick={handleStart}
-              disabled={room.players.length < 2}
+              disabled={room.players.length < 2 || !allReady}
               className="w-full py-4 bg-accent text-white rounded-full font-display font-bold text-lg shadow-lg disabled:opacity-50">
-              {room.players.length < 2 ? 'Waiting for players…' : 'Start Game'}
+              {room.players.length < 2 ? 'Waiting for players…' : allReady ? 'Start Game' : 'Waiting for all players to ready'}
             </motion.button>
           ) : (
-            <div className="text-center text-sm text-ktext-tertiary py-4">Waiting for host to start…</div>
+            <div className="text-center text-sm text-ktext-tertiary py-1">Waiting for host to start…</div>
           )}
           {isHost && (
             <div className="text-center text-xs text-ktext-tertiary">

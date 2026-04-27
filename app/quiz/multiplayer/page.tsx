@@ -14,6 +14,7 @@ export default function MultiplayerHub() {
   const [loading, setLoading] = useState(false)
   const [poolMode, setPoolMode] = useState<'random' | 'watched' | 'common'>('random')
   const [guessType, setGuessType] = useState<'anime' | 'song' | 'artist'>('anime')
+  const [roundCount, setRoundCount] = useState<5 | 10 | 15 | 20>(10)
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,7 +45,7 @@ export default function MultiplayerHub() {
           roomType: type,
           poolMode,
           guessType,
-          roundCount: 10,
+          roundCount,
           maxPlayers: type === 'duel' ? 2 : 6,
           matchmaking: 'invite'
         })
@@ -127,6 +128,22 @@ export default function MultiplayerHub() {
                     }`}
                   >
                     {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-ktext-tertiary uppercase tracking-wider mb-2 block ml-1">Rounds</label>
+              <div className="flex bg-gray-50 p-1 rounded-xl gap-1">
+                {([5, 10, 15, 20] as const).map((count) => (
+                  <button
+                    key={count}
+                    onClick={() => setRoundCount(count)}
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                      roundCount === count ? 'bg-white text-accent shadow-sm' : 'text-gray-400'
+                    }`}
+                  >
+                    {count}
                   </button>
                 ))}
               </div>

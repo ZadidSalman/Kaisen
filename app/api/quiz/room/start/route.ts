@@ -10,6 +10,29 @@ export const dynamic = 'force-dynamic'
 const toProxyUrl = (sourceUrl: string | null | undefined) =>
   sourceUrl ? `/api/media/proxy?url=${encodeURIComponent(sourceUrl)}` : ''
 
+const buildMediaCandidates = (theme: any): string[] => {
+  const directCandidates = [
+    theme?.videoUrl,
+    theme?.audioUrl,
+    ...(Array.isArray(theme?.entries)
+      ? theme.entries.flatMap((entry: any) =>
+          Array.isArray(entry?.videoSources) ? entry.videoSources.map((source: any) => source?.url) : []
+        )
+      : []),
+  ].filter((url): url is string => typeof url === 'string' && url.length > 0)
+
+  const seen = new Set<string>()
+  const proxiedCandidates: string[] = []
+  for (const directUrl of directCandidates) {
+    const proxied = toProxyUrl(directUrl)
+    if (!proxied || seen.has(proxied)) continue
+    seen.add(proxied)
+    proxiedCandidates.push(proxied)
+  }
+
+  return proxiedCandidates
+}
+
 export async function POST(req: NextRequest) {
   const routeTag = 'QuizRoomStart'
   const routeLog = (event: string, extra?: Record<string, unknown>) => {
@@ -59,6 +82,19 @@ export async function POST(req: NextRequest) {
       if (!allReady) {
         routeWarn('duel_not_all_ready', { roomId })
         return NextResponse.json({ success: false, error: 'Both players must be ready!' }, { status: 400 })
+      }
+    }
+
+    if (room.roomType === 'party') {
+      if (room.players.length < 2) {
+        routeWarn('party_invalid_player_count', { roomId, playerCount: room.players.length })
+        return NextResponse.json({ success: false, error: 'At least 2 players are required to start.' }, { status: 400 })
+      }
+
+      const allReady = room.players.every((p: any) => p.ready)
+      if (!allReady) {
+        routeWarn('party_not_all_ready', { roomId })
+        return NextResponse.json({ success: false, error: 'All players must be ready to enable autoplay.' }, { status: 400 })
       }
     }
 
@@ -118,7 +154,8 @@ export async function POST(req: NextRequest) {
     room.timerAuthority = Date.now().toString() // Set a fresh timer authority
 
     await room.save()
-    const proxiedVideoUrl = toProxyUrl(newRound.videoUrl)
+    const mediaCandidates = buildMediaCandidates(correctTheme)
+    const proxiedVideoUrl = mediaCandidates[0] || toProxyUrl(newRound.videoUrl)
     routeLog('round_persisted', {
       roomId,
       round: 1,
@@ -127,6 +164,7 @@ export async function POST(req: NextRequest) {
       themeId: newRound.themeId,
       sourceVideoUrl: newRound.videoUrl,
       proxiedVideoUrl,
+      mediaCandidatesCount: mediaCandidates.length,
       timerAuthority: room.timerAuthority,
     })
 
@@ -135,6 +173,7 @@ export async function POST(req: NextRequest) {
       round: 1,
       theme: {
         videoUrl: proxiedVideoUrl,
+        mediaCandidates,
         options: newRound.options,
       },
       startedAt: newRound.startedAt,
