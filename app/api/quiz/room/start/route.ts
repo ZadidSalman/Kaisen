@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     if (!correctTheme) {
       // Fallback if no themes found for watched pool
       const themes = await ThemeCache.aggregate([
-        { $match: { audioUrl: { $ne: null } } },
+        { $match: { videoUrl: { $nin: [null, ''] } } },
         { $sample: { size: 1 } }
       ])
       correctTheme = themes[0]
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
     const newRound = {
       roundNumber: 1,
       themeId: correctTheme._id.toString(),
-      videoUrl: correctTheme.audioUrl,
+      videoUrl: correctTheme.videoUrl,
       correctAnswer: correctAnswer,
       alternateAnswers: [correctTheme.animeTitle, correctTheme.animeTitleEnglish, ...(correctTheme.animeTitleAlternative || [])].filter(Boolean),
       options: options,

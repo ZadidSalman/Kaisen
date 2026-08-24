@@ -28,9 +28,9 @@ describe('selectCommonModeThemeCandidate', () => {
     ]
 
     const animeThemes: any[] = [
-      { _id: 'op-1', anilistId: 101, animeTitle: 'Shared Show', type: 'OP', sequence: 1, slug: 'shared-show-op1', audioUrl: 'https://audio/op1.mp3' },
-      { _id: 'ed-1', anilistId: 101, animeTitle: 'Shared Show', type: 'ED', sequence: 1, slug: 'shared-show-ed1', audioUrl: 'https://audio/ed1.mp3' },
-      { _id: 'op-2', anilistId: 101, animeTitle: 'Shared Show', type: 'OP', sequence: 2, slug: 'shared-show-op2', audioUrl: 'https://audio/op2.mp3' },
+      { _id: 'op-1', anilistId: 101, animeTitle: 'Shared Show', type: 'OP', sequence: 1, slug: 'shared-show-op1', videoUrl: 'https://video/op1.webm' },
+      { _id: 'ed-1', anilistId: 101, animeTitle: 'Shared Show', type: 'ED', sequence: 1, slug: 'shared-show-ed1', videoUrl: 'https://video/ed1.webm' },
+      { _id: 'op-2', anilistId: 101, animeTitle: 'Shared Show', type: 'OP', sequence: 2, slug: 'shared-show-op2', videoUrl: 'https://video/op2.webm' },
     ]
 
     const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0.99]))
@@ -63,8 +63,8 @@ describe('selectCommonModeThemeCandidate', () => {
     ]
 
     const animeThemes: any[] = [
-      { _id: 'op-1', anilistId: 101, animeTitle: 'Alpha Show', type: 'OP', sequence: 1, slug: 'alpha-op1', audioUrl: 'https://audio/alpha-op1.mp3' },
-      { _id: 'ed-2', anilistId: 102, animeTitle: 'Beta Show', type: 'ED', sequence: 2, slug: 'beta-ed2', audioUrl: 'https://audio/beta-ed2.mp3' },
+      { _id: 'op-1', anilistId: 101, animeTitle: 'Alpha Show', type: 'OP', sequence: 1, slug: 'alpha-op1', videoUrl: 'https://video/alpha-op1.webm' },
+      { _id: 'ed-2', anilistId: 102, animeTitle: 'Beta Show', type: 'ED', sequence: 2, slug: 'beta-ed2', videoUrl: 'https://video/beta-ed2.webm' },
     ]
 
     const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0.99]))
@@ -92,8 +92,8 @@ describe('selectCommonModeThemeCandidate', () => {
     ]
 
     const animeThemes: any[] = [
-      { _id: 'op-a', anilistId: 202, animeTitle: 'Hybrid Show', type: 'OP', sequence: 1, slug: 'hybrid-show-op1', audioUrl: 'https://audio/op-a.mp3' },
-      { _id: 'ed-a', anilistId: 202, animeTitle: 'Hybrid Show', type: 'ED', sequence: 1, slug: 'hybrid-show-ed1', audioUrl: 'https://audio/ed-a.mp3' },
+      { _id: 'op-a', anilistId: 202, animeTitle: 'Hybrid Show', type: 'OP', sequence: 1, slug: 'hybrid-show-op1', videoUrl: 'https://video/op-a.webm' },
+      { _id: 'ed-a', anilistId: 202, animeTitle: 'Hybrid Show', type: 'ED', sequence: 1, slug: 'hybrid-show-ed1', videoUrl: 'https://video/ed-a.webm' },
     ]
 
     const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0, 0]))
@@ -126,9 +126,9 @@ describe('selectCommonModeThemeCandidate', () => {
     ]
 
     const animeThemes: any[] = [
-      { _id: 'a-op', anilistId: 301, animeTitle: 'Mismatch Show', type: 'OP', sequence: 1, slug: 'mismatch-op1', audioUrl: 'https://audio/a-op.mp3' },
-      { _id: 'a-ed', anilistId: 301, animeTitle: 'Mismatch Show', type: 'ED', sequence: 1, slug: 'mismatch-ed1', audioUrl: 'https://audio/a-ed.mp3' },
-      { _id: 'b-op', anilistId: 302, animeTitle: 'Match Show', type: 'OP', sequence: 1, slug: 'match-op1', audioUrl: 'https://audio/b-op.mp3' },
+      { _id: 'a-op', anilistId: 301, animeTitle: 'Mismatch Show', type: 'OP', sequence: 1, slug: 'mismatch-op1', videoUrl: 'https://video/a-op.webm' },
+      { _id: 'a-ed', anilistId: 301, animeTitle: 'Mismatch Show', type: 'ED', sequence: 1, slug: 'mismatch-ed1', videoUrl: 'https://video/a-ed.webm' },
+      { _id: 'b-op', anilistId: 302, animeTitle: 'Match Show', type: 'OP', sequence: 1, slug: 'match-op1', videoUrl: 'https://video/b-op.webm' },
     ]
 
     const selection = selectCommonModeThemeCandidate(playerProfiles, animeThemes, createRandomSequence([0, 0, 0]))

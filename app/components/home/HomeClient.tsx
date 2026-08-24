@@ -36,7 +36,7 @@ export function HomeClient() {
     queryKey: queryKeys.themes.popular(typeFilter ?? undefined),
     queryFn: ({ pageParam = 1 }) => fetchPopularThemes(typeFilter ?? undefined, pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.meta.hasMore ? lastPage.meta.page + 1 : undefined,
+    getNextPageParam: (lastPage) => lastPage?.meta?.hasMore ? lastPage.meta.page + 1 : undefined,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

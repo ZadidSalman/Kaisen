@@ -1,13 +1,17 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
-const MONGODB_URI = process.env.MONGODB_URI!
-
-if (!MONGODB_URI) throw new Error('MONGODB_URI not set in environment')
+const MONGODB_URI = process.env.MONGODB_URI
 
 let cached = (global as any).__mongoose ?? { conn: null, promise: null }
 ;(global as any).__mongoose = cached
 
 export async function connectDB() {
+  // Keep this check inside the connection function. Route handlers can then
+  // return their normal JSON error response instead of failing while modules
+  // are imported and producing Next.js's HTML error document.
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI not set in environment')
+  }
   if (cached.conn) return cached.conn
   if (!cached.promise) {
     cached.promise = mongoose.connect(MONGODB_URI, {

@@ -21,7 +21,7 @@ export async function generateRoundOptions(correctTheme: any, guessType: string)
   let distractorFilter: any = { 
     _id: { $ne: correctTheme._id }, 
     isPopular: true,
-    audioUrl: { $ne: null }
+    videoUrl: { $nin: [null, ''] }
   }
   
   // Try to find distractors that don't have the same answer value
@@ -79,7 +79,7 @@ type CommonModeThemeCandidate = {
   slug?: string
   type: 'OP' | 'ED'
   sequence: number
-  audioUrl: string | null
+  videoUrl: string | null
 }
 
 type CommonModeThemeSelectionResult = {
@@ -123,7 +123,7 @@ export function selectCommonModeThemeCandidate(
   const groupedThemes = new Map<number, CommonModeThemeCandidate[]>()
 
   for (const theme of animeThemes) {
-    if (!theme.anilistId || !theme.audioUrl) continue
+    if (!theme.anilistId || !theme.videoUrl) continue
     const existing = groupedThemes.get(theme.anilistId) || []
     existing.push(theme)
     groupedThemes.set(theme.anilistId, existing)
@@ -257,7 +257,7 @@ async function selectThemeForCommonMode(room: any, excludedThemeIds: string[] = 
 
   const commonThemeFilter: any = {
     anilistId: { $in: sharedAnimeIds },
-    audioUrl: { $ne: null },
+    videoUrl: { $nin: [null, ''] },
     ...getGuessTypeRequirements(room.settings.guessType),
   }
 
@@ -278,7 +278,7 @@ async function selectThemeForCommonMode(room: any, excludedThemeIds: string[] = 
     'slug',
     'type',
     'sequence',
-    'audioUrl',
+    'videoUrl',
   ].join(' '))
 
   const selection = selectCommonModeThemeCandidate(profiles, animeThemes as CommonModeThemeCandidate[])
@@ -302,7 +302,7 @@ async function selectThemeForCommonMode(room: any, excludedThemeIds: string[] = 
     selectedThemeSlug: selection.selectedTheme.slug,
     selectedThemeType: selection.selectedTheme.type,
     selectedThemeSequence: selection.selectedTheme.sequence,
-    selectedAudioUrl: selection.selectedTheme.audioUrl,
+    selectedVideoUrl: selection.selectedTheme.videoUrl,
   })
 
   return selection.selectedTheme
@@ -354,7 +354,7 @@ export async function selectThemeForRoom(room: any, excludedThemeIds: string[] =
       animeTitle: theme.animeTitleEnglish || theme.animeTitle,
       themeType: theme.type,
       themeSequence: theme.sequence,
-      audioUrl: theme.audioUrl,
+      videoUrl: theme.videoUrl,
     })
   }
 
@@ -364,7 +364,7 @@ export async function selectThemeForRoom(room: any, excludedThemeIds: string[] =
 export async function getDynamicThemeFilter(room: any) {
   const { User, WatchHistory, ThemeCache, Rating, Favorite } = await import('./models')
   
-  let baseFilter: any = { audioUrl: { $ne: null } }
+  let baseFilter: any = { videoUrl: { $nin: [null, ''] } }
   
   if (room.settings.guessType === 'artist') {
     baseFilter.artistName = { $nin: [null, '', 'Unknown'] }

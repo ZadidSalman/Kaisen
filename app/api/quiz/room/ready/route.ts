@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
         if (!correctTheme) {
           const themes = await ThemeCache.aggregate([
-            { $match: { audioUrl: { $ne: null } } },
+            { $match: { videoUrl: { $nin: [null, ''] } } },
             { $sample: { size: 1 } }
           ])
           correctTheme = themes[0]
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
         const newRound = {
           roundNumber: 1,
           themeId: correctTheme._id.toString(),
-          videoUrl: correctTheme.audioUrl,
+          videoUrl: correctTheme.videoUrl,
           correctAnswer,
           alternateAnswers: [correctTheme.animeTitle, correctTheme.animeTitleEnglish, ...(correctTheme.animeTitleAlternative || [])].filter(Boolean),
           options,

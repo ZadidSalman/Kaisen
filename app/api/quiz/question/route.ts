@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
     const source = searchParams.get('source') || 'random'
     const excludeIds = searchParams.get('excludeIds')?.split(',').filter(Boolean) || []
 
-    let themePoolFilter: any = { audioUrl: { $ne: null } }
+    // Quiz playback uses the canonical WebM video URL. audioUrl is optional
+    // metadata and must not decide whether a playable theme is eligible.
+    let themePoolFilter: any = { videoUrl: { $nin: [null, ''] } }
 
     // Ensure the correct theme has the required metadata for the type
     if (type === 'artist') {
@@ -125,7 +127,7 @@ export async function GET(req: NextRequest) {
 
       // Check if user has enough themes in library (at least 10)
       const libraryBaseFilter: any = { 
-        audioUrl: { $ne: null },
+        videoUrl: { $nin: [null, ''] },
         $or: orClauses 
       }
       

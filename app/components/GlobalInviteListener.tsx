@@ -12,10 +12,11 @@ export function GlobalInviteListener() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!user?.id) return
+    const client = pusherClient
+    if (!user?.id || !client) return
 
     const channelName = `private-user-${user.id}`
-    const channel = pusherClient.subscribe(channelName)
+    const channel = client.subscribe(channelName)
 
     channel.bind('quiz-invite', (data: any) => {
       // data: { inviteId, roomCode, roomType, fromUsername, fromAvatar }
@@ -89,7 +90,7 @@ export function GlobalInviteListener() {
 
     return () => {
       channel.unbind('quiz-invite')
-      pusherClient.unsubscribe(channelName)
+      client.unsubscribe(channelName)
     }
   }, [user, router])
 

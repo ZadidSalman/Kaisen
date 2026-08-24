@@ -1,10 +1,16 @@
 import PusherJs from 'pusher-js'
 import { authFetch } from './auth-client'
 
-export const pusherClient = 
-  typeof window !== 'undefined'
-    ? new PusherJs(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY
+const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+
+// Realtime is optional for local development and solo quiz. Do not instantiate
+// Pusher without its public key: the SDK throws during module evaluation and
+// prevents the entire application from rendering.
+export const pusherClient =
+  typeof window !== 'undefined' && pusherKey && pusherCluster
+    ? new PusherJs(pusherKey, {
+        cluster: pusherCluster,
         authorizer: (channel) => {
           return {
             authorize: (socketId, callback) => {
@@ -36,4 +42,4 @@ export const pusherClient =
           }
         }
       })
-    : (null as any)
+    : null

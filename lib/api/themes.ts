@@ -1,17 +1,35 @@
 import { authFetch } from '../auth-client'
 
+async function parseApiResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get('content-type') || ''
+  const body = contentType.includes('application/json') ? await res.json() : null
+
+  if (!res.ok) {
+    const message = body && typeof body === 'object' && 'error' in body
+      ? String(body.error)
+      : `Request failed with status ${res.status}`
+    throw new Error(message)
+  }
+
+  if (body === null) {
+    throw new Error('The server returned an invalid response')
+  }
+
+  return body as T
+}
+
 export async function fetchPopularThemes(type?: string, page = 1) {
   const params = new URLSearchParams({ page: page.toString() })
   if (type) params.append('type', type)
   const res = await fetch(`/api/themes/popular?${params}`)
-  return res.json()
+  return parseApiResponse(res)
 }
 
 export async function fetchSeasonalThemes(season: string, year: number, type?: string, page = 1) {
   const params = new URLSearchParams({ season, year: year.toString(), page: page.toString() })
   if (type) params.append('type', type)
   const res = await fetch(`/api/themes/seasonal?${params}`)
-  return res.json()
+  return parseApiResponse(res)
 }
 
 export async function fetchThemeBySlug(slug: string) {

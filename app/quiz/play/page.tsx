@@ -10,7 +10,8 @@ import { authFetch } from '@/lib/auth-client'
 
 interface Question {
   questionTheme: {
-    audioUrl: string
+    videoUrl?: string | null
+    audioUrl?: string | null
     animeTitle: string
     songTitle: string
     artistName?: string
@@ -39,9 +40,12 @@ function QuizPlayContent() {
   const [timeLeft, setTimeLeft] = useState(20)
   const [isMediaReady, setIsMediaReady] = useState(false)
   const [isTimerReady, setIsTimerReady] = useState(false)
+  const [isAudioBlocked, setIsAudioBlocked] = useState(false)
 
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const mediaRef = useRef<HTMLVideoElement | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const playbackTokenRef = useRef(0)
+  const timerStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchQuestion = async (idsToExclude = usedThemeIds) => {
     setLoading(true)
@@ -66,6 +70,7 @@ function QuizPlayContent() {
       setTimeLeft(20)
       setIsMediaReady(false)
       setIsTimerReady(false)
+      setIsAudioBlocked(false)
     }
   }
 
@@ -74,17 +79,95 @@ function QuizPlayContent() {
   }, [])
 
   useEffect(() => {
-    if (question && audioRef.current) {
-      audioRef.current.src = question.questionTheme.audioUrl
-      audioRef.current.volume = 0.5
-      audioRef.current.oncanplay = () => {
-        setIsMediaReady(true)
-        // Delay timer start by 1 second after audio is ready
-        setTimeout(() => setIsTimerReady(true), 1000)
+    const media = mediaRef.current
+    // ThemeCache stores the canonical quiz media in videoUrl. It is a WebM video
+    // with an audio track, so use a video element even though the quiz hides it.
+    const sourceUrl = question?.questionTheme.videoUrl || question?.questionTheme.audioUrl
+    if (!media || !sourceUrl) return
+
+    const playbackToken = ++playbackTokenRef.current
+    const candidates = Array.from(new Set([
+      `/api/media/proxy?url=${encodeURIComponent(sourceUrl)}`,
+      sourceUrl,
+    ]))
+    let candidateIndex = 0
+    let timerStarted = false
+    let disposed = false
+
+    const startTimer = () => {
+      if (disposed || playbackToken !== playbackTokenRef.current || timerStarted) return
+      timerStarted = true
+      setIsMediaReady(true)
+      timerStartTimeoutRef.current = setTimeout(() => {
+        if (!disposed && playbackToken === playbackTokenRef.current) setIsTimerReady(true)
+      }, 750)
+    }
+
+    const tryCandidate = async () => {
+      if (disposed || playbackToken !== playbackTokenRef.current) return
+      const candidate = candidates[candidateIndex]
+      if (!candidate) {
+        setIsAudioBlocked(true)
+        startTimer()
+        return
       }
-      audioRef.current.play().catch(e => console.log('Audio play failed', e))
+
+      media.pause()
+      media.currentTime = 0
+      media.src = candidate
+      media.load()
+      try {
+        await media.play()
+        if (!disposed && playbackToken === playbackTokenRef.current) {
+          setIsAudioBlocked(false)
+          startTimer()
+        }
+      } catch (error: any) {
+        // Autoplay rejection is recoverable only from a later user gesture. Media
+        // loading failures use the next source immediately.
+        if (error?.name === 'NotAllowedError') {
+          setIsAudioBlocked(true)
+          startTimer()
+          return
+        }
+        candidateIndex += 1
+        void tryCandidate()
+      }
+    }
+
+    media.volume = 0.5
+    media.oncanplay = startTimer
+    media.onerror = () => {
+      candidateIndex += 1
+      void tryCandidate()
+    }
+
+    // Never hold a quiz round indefinitely for an unavailable media source.
+    const mediaTimeout = setTimeout(startTimer, 4000)
+    void tryCandidate()
+
+    return () => {
+      disposed = true
+      clearTimeout(mediaTimeout)
+      if (timerStartTimeoutRef.current) clearTimeout(timerStartTimeoutRef.current)
+      media.oncanplay = null
+      media.onerror = null
+      media.pause()
+      media.removeAttribute('src')
+      media.load()
     }
   }, [question])
+
+  const resumeAudio = async () => {
+    const media = mediaRef.current
+    if (!media) return
+    try {
+      await media.play()
+      setIsAudioBlocked(false)
+    } catch {
+      setIsAudioBlocked(true)
+    }
+  }
 
   useEffect(() => {
     if (!loading && isTimerReady && !isAnswered && !isGameOver && timeLeft > 0) {
@@ -201,7 +284,7 @@ function QuizPlayContent() {
 
   return (
     <div className="max-w-xl mx-auto min-h-screen bg-[#fffafa] flex flex-col overflow-hidden">
-      <audio ref={audioRef} />
+      <video ref={mediaRef} preload="auto" playsInline className="hidden" />
 
       {/* Header matching screenshot */}
       <header className="px-6 h-20 flex items-center justify-between relative bg-white/50 backdrop-blur-md">
@@ -304,6 +387,17 @@ function QuizPlayContent() {
                   />
                 ))}
               </div>
+
+              {isAudioBlocked && (
+                <button
+                  type="button"
+                  onClick={resumeAudio}
+                  className="mb-6 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-bold text-white shadow-lg interactive"
+                >
+                  <Music2 className="h-4 w-4" />
+                  Tap to play audio
+                </button>
+              )}
 
               {/* Options matching screenshot exactly */}
               <div className="w-full space-y-3 mb-8 max-w-sm">

@@ -266,9 +266,10 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
   }, [isAudioUnlocked, logMediaEvent, startTimer])
 
   useEffect(() => {
-    if (!user?.id) return
+    const client = pusherClient
+    if (!user?.id || !client) return
     const channelName = `presence-quiz-room-${room._id}`
-    const channel = pusherClient.subscribe(channelName)
+    const channel = client.subscribe(channelName)
 
     channel.bind('room:player-joined', (data: any) => {
       setRoom(prev => ({ ...prev, players: data.players ?? prev.players }))
@@ -390,7 +391,7 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
 
     return () => {
       channel.unbind_all()
-      pusherClient.unsubscribe(channelName)
+      client.unsubscribe(channelName)
       stopTimer()
       if (mediaRef.current) {
         mediaRef.current.pause()
