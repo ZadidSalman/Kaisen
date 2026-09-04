@@ -37,6 +37,7 @@ export default function AnimePageClient({ anime, themes }: AnimePageClientProps)
           <Image
             src={anime.atGrillImage || anime.bannerImage || anime.coverImageLarge || 'https://picsum.photos/seed/anime/1920/1080'}
             fill
+            unoptimized
             className="object-cover opacity-[0.12] blur-[1px]"
             alt="background"
             priority
@@ -146,6 +147,7 @@ export default function AnimePageClient({ anime, themes }: AnimePageClientProps)
                   <Image
                     src={theme.themeEntryCover || theme.animeCoverImage || 'https://picsum.photos/seed/song/100/100'}
                     fill
+                    unoptimized
                     className="object-cover"
                     alt={theme.themeName}
                     referrerPolicy="no-referrer"

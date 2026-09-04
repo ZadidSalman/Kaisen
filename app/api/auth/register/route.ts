@@ -5,7 +5,10 @@ import { hashPassword, signAccessToken, signRefreshToken } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return NextResponse.json({ success: false, error: 'Database unavailable' }, { status: 503 })
+    }
     const { username, displayName, email, password } = await req.json()
 
     if (!username || !displayName || !email || !password) {

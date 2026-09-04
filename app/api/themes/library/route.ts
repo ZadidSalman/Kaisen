@@ -47,7 +47,10 @@ async function fetchAniListCompletedMediaIds(accessToken: string, userId: number
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return NextResponse.json({ success: true, data: [], meta: { total: 0, page: 1, limit: 50 } })
+    }
     const payload = await proxy(req)
     if (!payload) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })

@@ -14,7 +14,8 @@ import AnimePageClient from './AnimePageClient'
 
 export default async function AnimeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await connectDB()
+  const db = await connectDB()
+  if (!db) notFound()
 
   const animeId = parseInt(id)
   if (isNaN(animeId)) notFound()

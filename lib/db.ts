@@ -10,7 +10,8 @@ export async function connectDB() {
   // return their normal JSON error response instead of failing while modules
   // are imported and producing Next.js's HTML error document.
   if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI not set in environment')
+    console.warn('[AI Studio] MONGODB_URI not set in environment. Database features will be unavailable.');
+    return null;
   }
   if (cached.conn) return cached.conn
   if (!cached.promise) {

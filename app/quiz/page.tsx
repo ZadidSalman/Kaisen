@@ -202,6 +202,8 @@ export default function QuizPage() {
                   <Image
                     src={mode.image}
                     fill
+                    unoptimized
+                    referrerPolicy="no-referrer"
                     className="object-cover opacity-80 group-hover:scale-110 transition-transform duration-700"
                     alt={mode.title}
                   />

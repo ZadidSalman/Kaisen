@@ -31,6 +31,7 @@ function QuizPlayContent() {
   const [round, setRound] = useState(1)
   const [score, setScore] = useState(0)
   const [question, setQuestion] = useState<Question | null>(null)
+  const [nextQuestion, setNextQuestion] = useState<Question | null>(null)
   const [usedThemeIds, setUsedThemeIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
@@ -43,11 +44,23 @@ function QuizPlayContent() {
   const [isAudioBlocked, setIsAudioBlocked] = useState(false)
 
   const mediaRef = useRef<HTMLVideoElement | null>(null)
+  const preloadMediaRef = useRef<HTMLVideoElement | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const playbackTokenRef = useRef(0)
   const timerStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchQuestion = async (idsToExclude = usedThemeIds) => {
+  const fetchQuestion = useCallback(async (idsToExclude = usedThemeIds) => {
+    if (nextQuestion) {
+      setQuestion(nextQuestion)
+      setNextQuestion(null)
+      setLoading(false)
+      setTimeLeft(20)
+      setIsMediaReady(false)
+      setIsTimerReady(false)
+      setIsAudioBlocked(false)
+      return
+    }
+
     setLoading(true)
     setSelectedOption(null)
     setIsAnswered(false)
@@ -72,11 +85,32 @@ function QuizPlayContent() {
       setIsTimerReady(false)
       setIsAudioBlocked(false)
     }
-  }
+  }, [type, source, usedThemeIds, nextQuestion])
+
+  const prefetchNextQuestion = useCallback(async () => {
+    try {
+      const currentId = (question?.questionTheme as any)?._id
+      const exclude = [...usedThemeIds]
+      if (currentId && !exclude.includes(currentId)) exclude.push(currentId)
+
+      const res = await authFetch(`/api/quiz/question?type=${type}&source=${source}&excludeIds=${exclude.join(',')}`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setNextQuestion(json.data)
+        const sourceUrl = json.data.questionTheme.videoUrl || json.data.questionTheme.audioUrl
+        if (sourceUrl && preloadMediaRef.current) {
+          preloadMediaRef.current.src = sourceUrl
+          preloadMediaRef.current.load()
+        }
+      }
+    } catch (err) {
+      console.error('Failed to prefetch next question', err)
+    }
+  }, [type, source, usedThemeIds, question])
 
   useEffect(() => {
-    fetchQuestion([])
-  }, [])
+    setTimeout(() => fetchQuestion([]), 0)
+  }, [fetchQuestion])
 
   useEffect(() => {
     const media = mediaRef.current
@@ -169,25 +203,7 @@ function QuizPlayContent() {
     }
   }
 
-  useEffect(() => {
-    if (!loading && isTimerReady && !isAnswered && !isGameOver && timeLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => prev - 1)
-      }, 1000)
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-
-    if (timeLeft === 0 && !isAnswered && !isGameOver) {
-      handleOptionClick('__TIMEOUT__')
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [loading, isTimerReady, isAnswered, isGameOver, timeLeft])
-
-  const handleOptionClick = (option: string) => {
+  const handleOptionClick = useCallback((option: string) => {
     if (isAnswered) return
     
     const isTimeout = option === '__TIMEOUT__'
@@ -196,6 +212,11 @@ function QuizPlayContent() {
 
     if (!isTimeout && option === question?.correctValue) {
       setScore(prev => prev + (timeLeft * 20)) 
+    }
+
+    // Prefetch next question data immediately
+    if (round < 10) {
+      prefetchNextQuestion()
     }
 
     // Move to next round after 2 seconds
@@ -207,7 +228,28 @@ function QuizPlayContent() {
         setIsGameOver(true)
       }
     }, isTimeout ? 3000 : 2000)
-  }
+  }, [isAnswered, question, timeLeft, round, fetchQuestion, prefetchNextQuestion])
+
+  useEffect(() => {
+    if (!loading && isTimerReady && !isAnswered && !isGameOver && timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current)
+            setTimeout(() => handleOptionClick('__TIMEOUT__'), 0)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [loading, isTimerReady, isAnswered, isGameOver, handleOptionClick])
 
   if (error) {
     return (
@@ -284,7 +326,16 @@ function QuizPlayContent() {
 
   return (
     <div className="max-w-xl mx-auto min-h-screen bg-[#fffafa] flex flex-col overflow-hidden">
-      <video ref={mediaRef} preload="auto" playsInline className="hidden" />
+      {/* Invisible media preloader */}
+      <video ref={preloadMediaRef} className="hidden" preload="auto" muted />
+
+      <video 
+        ref={mediaRef} 
+        className="hidden" 
+        playsInline 
+        webkit-playsinline="true"
+        preload="auto"
+      />
 
       {/* Header matching screenshot */}
       <header className="px-6 h-20 flex items-center justify-between relative bg-white/50 backdrop-blur-md">

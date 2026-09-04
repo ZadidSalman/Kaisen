@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic'
 export default async function ThemePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   
-  await connectDB()
+  const db = await connectDB()
+  if (!db) notFound()
   const theme = await ThemeCache.findOne({ slug }).lean()
   
   if (!theme) {

@@ -28,6 +28,7 @@ export const ThemeFeaturedCard = React.memo(function ThemeFeaturedCard({ theme, 
       <Image
         src={animeCoverImage ?? animeGrillImage ?? fallback}
         fill
+        unoptimized
         className="object-cover"
         alt={animeDisplayTitle ?? 'Anime featured image'}
         referrerPolicy="no-referrer"

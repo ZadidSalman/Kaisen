@@ -4,7 +4,10 @@ import { ThemeCache } from '@/lib/models'
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return NextResponse.json({ success: true, data: [], meta: { page: 1, hasMore: false } })
+    }
 
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type')

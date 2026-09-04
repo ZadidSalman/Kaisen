@@ -179,6 +179,7 @@ export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, a
       ? ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'] 
       : [],
     autoplay: autoPlay || false,
+    preload: 'auto',
     keyboard: { focused: true, global: false },
   }), [mode, autoPlay])
 
@@ -219,7 +220,7 @@ export function VideoPlayer({ videoSources, audioUrl, poster, mode, themeSlug, a
                   className={`w-2 bg-accent-mint rounded-full transition-all duration-300 ${isPlaying ? `animate-bounce-custom` : 'h-2'}`}
                   style={{ 
                     animationDelay: `${i * 0.1}s`,
-                    height: isPlaying ? `${Math.random() * 40 + 20}px` : '8px'
+                    height: isPlaying ? `${((i * 13) % 40) + 20}px` : '8px'
                   }} 
                 />
               ))}

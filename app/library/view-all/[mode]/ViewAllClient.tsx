@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, Loader2, Music, History, Heart } from 'lucide-react'
+import { ChevronLeft, Loader2, Music, History, Heart, Play, Pause } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { ThemeLibraryRow } from '@/app/components/library/ThemeLibraryRow'
 import { authFetch } from '@/lib/auth-client'
+import { usePlayer } from '@/app/context/PlayerContext'
 
 interface ViewAllClientProps {
   mode: string // 'watched' | 'favorites'
@@ -13,6 +14,7 @@ interface ViewAllClientProps {
 
 export function ViewAllClient({ mode }: ViewAllClientProps) {
   const router = useRouter()
+  const { playTheme, currentTheme, isPlaying, togglePlay } = usePlayer()
   const searchParams = useSearchParams()
   const initialType = (searchParams.get('type') as 'OP' | 'ED') || 'OP'
   
@@ -35,7 +37,7 @@ export function ViewAllClient({ mode }: ViewAllClientProps) {
     if (node) observer.current.observe(node)
   }, [loading, hasMore])
 
-  const fetchData = async (pageNum: number, type: 'OP' | 'ED', isNewTab: boolean = false) => {
+  const fetchData = useCallback(async (pageNum: number, type: 'OP' | 'ED', isNewTab: boolean = false) => {
     setLoading(true)
     try {
       const endpoint = mode === 'watched' ? '/api/themes/library' : '/api/themes/favorites'
@@ -56,21 +58,23 @@ export function ViewAllClient({ mode }: ViewAllClientProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [mode])
 
   // Reset and fetch when tab changes
   useEffect(() => {
-    setPage(1)
-    setHasMore(true)
-    fetchData(1, activeTab, true)
-  }, [activeTab, mode])
+    setTimeout(() => {
+      setPage(1)
+      setHasMore(true)
+      fetchData(1, activeTab, true)
+    }, 0)
+  }, [activeTab, mode, fetchData])
 
   // Fetch more when page changes (but not on first load which is handled above)
   useEffect(() => {
     if (page > 1) {
-      fetchData(page, activeTab)
+      setTimeout(() => fetchData(page, activeTab), 0)
     }
-  }, [page])
+  }, [page, activeTab, fetchData])
 
   const title = mode === 'watched' ? 'Watched Themes' : 'Favorite Themes'
   const Icon = mode === 'watched' ? History : Heart
@@ -91,9 +95,38 @@ export function ViewAllClient({ mode }: ViewAllClientProps) {
               {title}
             </h1>
           </div>
-          <p className="text-sm font-bold text-accent">
-            {total} Total
-          </p>
+          <div className="flex items-center gap-3">
+            {items.length > 0 && (
+              <button
+                id="play-all-viewall-btn"
+                type="button"
+                onClick={() => {
+                  const isThisListPlaying = items.some(t => t.slug === currentTheme?.slug)
+                  if (isThisListPlaying) {
+                    togglePlay()
+                  } else {
+                    playTheme(items[0], items)
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-accent text-white font-display text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-md shadow-accent/25"
+              >
+                {items.some(t => t.slug === currentTheme?.slug) && isPlaying ? (
+                  <>
+                    <Pause className="w-3.5 h-3.5 fill-current" />
+                    <span>Pause</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                    <span>Play All</span>
+                  </>
+                )}
+              </button>
+            )}
+            <p className="text-sm font-bold text-accent">
+              {total} Total
+            </p>
+          </div>
         </div>
 
         {/* OP/ED Toggle - Styled like image */}
@@ -131,6 +164,7 @@ export function ViewAllClient({ mode }: ViewAllClientProps) {
                   theme={theme} 
                   index={index} 
                   isFavorite={mode === 'favorites'} 
+                  playlist={items}
                 />
               </motion.div>
             ))}

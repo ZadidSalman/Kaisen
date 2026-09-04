@@ -429,16 +429,6 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
     return () => clearInterval(interval)
   }, [user?.id, room?._id, router])
 
-  // Auto-advance logic for Reveal phase
-  useEffect(() => {
-    if (phase === 'reveal' && isHost && !reveal?.gameOver) {
-      const autoNextTimer = setTimeout(() => {
-        handleNext()
-      }, 6000) // 6 seconds to look at results
-      return () => clearTimeout(autoNextTimer)
-    }
-  }, [phase, isHost, reveal?.gameOver])
-
   const handleSelectOption = async (option: string) => {
     if (answered || autoLocked || submitting) return
     const answerRound = currentRoundRef.current
@@ -562,6 +552,16 @@ export default function QuizRoomClient({ initialRoom }: { initialRoom: QuizRoomD
       nextInFlightRef.current = false
     }
   }
+
+  // Auto-advance logic for Reveal phase
+  useEffect(() => {
+    if (phase === 'reveal' && isHost && !reveal?.gameOver) {
+      const autoNextTimer = setTimeout(() => {
+        handleNext()
+      }, 6000) // 6 seconds to look at results
+      return () => clearTimeout(autoNextTimer)
+    }
+  }, [phase, isHost, reveal?.gameOver])
 
 
   const handleLeave = async () => {

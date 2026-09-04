@@ -17,7 +17,7 @@ export function AppHeader() {
 
   // Close menu on route change
   useEffect(() => {
-    setIsMenuOpen(false)
+    setTimeout(() => setIsMenuOpen(false), 0)
   }, [pathname])
 
   const navItems = [
@@ -134,6 +134,7 @@ export function AppHeader() {
                         unoptimized
                         className="object-cover" 
                         alt="avatar" 
+                        referrerPolicy="no-referrer"
                       />
                     </div>
                     <div>

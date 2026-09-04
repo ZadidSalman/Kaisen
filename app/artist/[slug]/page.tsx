@@ -5,7 +5,8 @@ import { ArtistPageClient } from './ArtistPageClient'
 
 export default async function ArtistDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  await connectDB()
+  const db = await connectDB()
+  if (!db) notFound()
 
   const [artistFromCache, themes] = await Promise.all([
     ArtistCache.findOne({ slug }).lean(),

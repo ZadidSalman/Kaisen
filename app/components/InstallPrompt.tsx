@@ -7,18 +7,18 @@ export function InstallPrompt() {
   const [isInstallable, setIsInstallable] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isStandalone, setIsStandalone] = useState(false)
-  const [isDismissed, setIsDismissed] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pwa-prompt-dismissed') === 'true'
+    }
+    return false
+  })
 
   useEffect(() => {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
-      setIsStandalone(true)
+      setTimeout(() => setIsStandalone(true), 0)
       return
-    }
-
-    // Check if user dismissed previously
-    if (localStorage.getItem('pwa-prompt-dismissed') === 'true') {
-      setIsDismissed(true)
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {

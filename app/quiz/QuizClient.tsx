@@ -160,20 +160,23 @@ export function QuizClient() {
   useEffect(() => {
     if (gameState === 'playing' && timer > 0 && !selectedOption && mediaReady) {
       timerRef.current = setInterval(() => {
-        setTimer(prev => prev - 1)
+        setTimer(prev => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current)
+            setTimeout(() => handleOptionSelect(''), 0)
+            return 0
+          }
+          return prev - 1
+        })
       }, 1000)
     } else {
       if (timerRef.current) clearInterval(timerRef.current)
     }
 
-    if (timer === 0 && !selectedOption && mediaReady) {
-      handleOptionSelect('') // This resolves as timeout in the handler
-    }
-
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [gameState, timer, selectedOption, handleOptionSelect, mediaReady])
+  }, [gameState, selectedOption, handleOptionSelect, mediaReady])
 
   if (gameState === 'lobby') {
     return (

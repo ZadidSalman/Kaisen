@@ -55,7 +55,7 @@ export function UnifiedWatchHistory({ username }: UnifiedWatchHistoryProps) {
     retry: 2,
   })
 
-  const mergedHistory = data?.entries ?? []
+  const mergedHistory = useMemo(() => data?.entries ?? [], [data?.entries])
   const meta = data?.meta
 
   const filteredHistory = useMemo(() => {

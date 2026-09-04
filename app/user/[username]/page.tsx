@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params
-  await connectDB()
+  const db = await connectDB()
+  if (!db) notFound()
 
   const user = await User.findOne({ username: username.toLowerCase() }).lean()
   

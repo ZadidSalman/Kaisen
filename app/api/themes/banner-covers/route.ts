@@ -6,7 +6,10 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return NextResponse.json({ success: true, data: [] })
+    }
 
     // Get 24 random themes that have a cover image
     const themes = await ThemeCache.aggregate([

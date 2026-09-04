@@ -22,7 +22,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return handleResponse(false, 'Database unavailable. Please try again later or contact support.')
+    }
     const refreshTokenCheck = req.cookies.get('refresh_token')?.value
     const payload = refreshTokenCheck ? verifyRefreshToken(refreshTokenCheck) : null
 

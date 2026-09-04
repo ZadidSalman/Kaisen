@@ -231,7 +231,7 @@ export default function NotificationPage() {
           </div>
           <h2 className="text-xl font-display font-bold text-ktext-primary mb-2">No notifications yet</h2>
           <p className="text-ktext-secondary max-w-xs">
-            When you get new followers or likes, they'll show up here!
+            When you get new followers or likes, they&apos;ll show up here!
           </p>
         </motion.div>
       )}

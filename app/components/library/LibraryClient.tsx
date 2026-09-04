@@ -3,16 +3,18 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Image from 'next/image'
 import Link from 'next/link'
-import { AlertCircle, Loader2, RefreshCcw } from 'lucide-react'
+import { AlertCircle, Loader2, RefreshCcw, Play, Pause } from 'lucide-react'
 import { toast } from 'sonner'
 import { fetchLibraryThemes, fetchFavoriteThemes } from '@/lib/api/themes'
 import { useAuth } from '@/hooks/useAuth'
 import { setAccessToken, authFetch } from '@/lib/auth-client'
 import { getFallbackAvatar } from '@/lib/utils'
 import { ThemeLibraryRow } from '@/app/components/library/ThemeLibraryRow'
+import { usePlayer } from '@/app/context/PlayerContext'
 
 export function LibraryClient() {
   const { user, refreshUser } = useAuth()
+  const { playTheme, currentTheme, isPlaying, togglePlay } = usePlayer()
   const [isConnecting, setIsConnecting] = useState(false)
   const [filterType, setFilterType] = useState<'OP' | 'ED'>('OP')
   const [topArtists, setTopArtists] = useState<any[]>([])
@@ -165,7 +167,36 @@ export function LibraryClient() {
         {/* Watched Anime Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[22px] font-display font-bold text-[#3B2C35] dark:text-white">Watched Anime</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-[22px] font-display font-bold text-[#3B2C35] dark:text-white">Watched Anime</h2>
+              {watchedThemes.length > 0 && (
+                <button
+                  id="play-all-watched-btn"
+                  type="button"
+                  onClick={() => {
+                    const isThisSectionPlaying = watchedThemes.some((t: any) => t.slug === currentTheme?.slug)
+                    if (isThisSectionPlaying) {
+                      togglePlay()
+                    } else {
+                      playTheme(watchedThemes[0], watchedThemes)
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 hover:bg-accent text-accent hover:text-white font-display text-xs font-bold transition-all shadow-xs"
+                >
+                  {watchedThemes.some((t: any) => t.slug === currentTheme?.slug) && isPlaying ? (
+                    <>
+                      <Pause className="w-3 h-3 fill-current" />
+                      <span>Pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3 h-3 fill-current ml-0.5" />
+                      <span>Play All</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             <Link 
               href={`/library/view-all/watched?type=${filterType}`}
               className="text-sm font-bold text-accent hover:underline"
@@ -201,9 +232,10 @@ export function LibraryClient() {
             ) : watchedThemes.length > 0 ? (
               watchedThemes.map((theme: any, index: number) => (
                 <ThemeLibraryRow 
-                  key={theme.slug} 
+                  key={theme.slug || index} 
                   theme={theme} 
                   index={index} 
+                  playlist={watchedThemes}
                 />
               ))
             ) : (
@@ -215,7 +247,36 @@ export function LibraryClient() {
         {/* Favorite Tracks Section */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[22px] font-display font-bold text-[#3B2C35] dark:text-white">Favorite Tracks</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-[22px] font-display font-bold text-[#3B2C35] dark:text-white">Favorite Tracks</h2>
+              {favoriteTracks.length > 0 && (
+                <button
+                  id="play-all-favorites-btn"
+                  type="button"
+                  onClick={() => {
+                    const isThisSectionPlaying = favoriteTracks.some((t: any) => t.slug === currentTheme?.slug)
+                    if (isThisSectionPlaying) {
+                      togglePlay()
+                    } else {
+                      playTheme(favoriteTracks[0], favoriteTracks)
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/15 hover:bg-accent text-accent hover:text-white font-display text-xs font-bold transition-all shadow-xs"
+                >
+                  {favoriteTracks.some((t: any) => t.slug === currentTheme?.slug) && isPlaying ? (
+                    <>
+                      <Pause className="w-3 h-3 fill-current" />
+                      <span>Pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3 h-3 fill-current ml-0.5" />
+                      <span>Play All</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             <Link 
               href="/favorites"
               className="text-sm font-bold text-accent hover:underline"
@@ -227,11 +288,13 @@ export function LibraryClient() {
             {isFavoritesLoading ? (
               [...Array(2)].map((_, i) => <div key={i} className="h-[72px] bg-[#F2DEE4] dark:bg-bg-toast rounded-[36px] shimmer" />)
             ) : favoriteTracks.length > 0 ? (
-              favoriteTracks.map((theme: any) => (
+              favoriteTracks.map((theme: any, index: number) => (
                 <ThemeLibraryRow 
-                  key={theme.slug} 
+                  key={theme.slug || index} 
                   theme={theme} 
+                  index={index}
                   isFavorite={true} 
+                  playlist={favoriteTracks}
                 />
               ))
             ) : (

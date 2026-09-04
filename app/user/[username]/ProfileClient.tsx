@@ -101,6 +101,7 @@ export function ProfileClient({ initialData }: { initialData: any }) {
                 unoptimized
                 className="object-cover" 
                 alt={initialData.displayName} 
+                referrerPolicy="no-referrer"
               />
             </div>
           </div>
@@ -240,8 +241,10 @@ function RatedItemCard({ item }: { item: any }) {
           <Image 
             src={item.themeId?.animeImage || 'https://picsum.photos/seed/anime/200'} 
             fill 
+            unoptimized
             className="object-cover" 
             alt="" 
+            referrerPolicy="no-referrer"
           />
        </div>
        <div className="flex-1 min-w-0">
@@ -279,9 +282,16 @@ function SocialActivityCard({ item, profileUser }: { item: any; profileUser: any
 
   return (
     <div className="flex items-center gap-3 p-3 bg-bg-surface rounded-2xl border border-border-subtle group hover:border-accent/30 transition-all">
-      <div className="w-10 h-10 rounded-xl bg-bg-elevated flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-xl bg-bg-elevated flex items-center justify-center shrink-0 overflow-hidden relative">
         {actorAvatar ? (
-          <img src={actorAvatar} alt="" className="w-full h-full object-cover rounded-xl" />
+          <Image 
+            src={actorAvatar} 
+            alt="" 
+            fill
+            unoptimized
+            referrerPolicy="no-referrer"
+            className="object-cover rounded-xl" 
+          />
         ) : (
           <span className="text-accent font-black">{actorName[0] || '?'}</span>
         )}
@@ -291,7 +301,7 @@ function SocialActivityCard({ item, profileUser }: { item: any; profileUser: any
           <span className="font-black">{actorName}</span> {getActionText()}
         </p>
         <p className="text-[10px] text-ktext-tertiary font-bold mt-0.5">
-          {new Date(item.date || item.createdAt || Date.now()).toLocaleDateString()}
+          {(item.date || item.createdAt) ? new Date(item.date || item.createdAt).toLocaleDateString() : 'Recent'}
         </p>
       </div>
     </div>

@@ -7,12 +7,13 @@ interface PlayerContextType {
   currentIndex: number
   isPlaying: boolean
   currentTheme: IThemeCache | null
-  playTheme: (theme: IThemeCache, playlist?: IThemeCache[]) => void
+  playTheme: (theme: IThemeCache | any, playlist?: (IThemeCache | any)[]) => void
   next: () => void
   previous: () => void
   togglePlay: () => void
   setPlaylist: (themes: IThemeCache[]) => void
   setIsPlaying: (playing: boolean) => void
+  closePlayer: () => void
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined)
@@ -22,36 +23,44 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [isPlaying, setIsPlaying] = useState(false)
 
-  const currentTheme = currentIndex >= 0 ? playlist[currentIndex] : null
+  const currentTheme = currentIndex >= 0 && currentIndex < playlist.length ? playlist[currentIndex] : null
 
-  const playTheme = useCallback((theme: IThemeCache, newPlaylist?: IThemeCache[]) => {
-    if (newPlaylist) {
-      setPlaylistState(newPlaylist)
-      const index = newPlaylist.findIndex(t => t.slug === theme.slug)
+  const playTheme = useCallback((theme: IThemeCache | any, newPlaylist?: (IThemeCache | any)[]) => {
+    if (!theme) return
+
+    if (newPlaylist && newPlaylist.length > 0) {
+      setPlaylistState(newPlaylist as IThemeCache[])
+      const index = newPlaylist.findIndex(t => 
+        (t.slug && theme.slug && t.slug === theme.slug) || 
+        (t._id && theme._id && String(t._id) === String(theme._id))
+      )
       setCurrentIndex(index >= 0 ? index : 0)
     } else {
-      setPlaylistState([theme])
+      setPlaylistState([theme as IThemeCache])
       setCurrentIndex(0)
     }
     setIsPlaying(true)
   }, [])
 
   const next = useCallback(() => {
-    if (currentIndex < playlist.length - 1) {
-      setCurrentIndex(prev => prev + 1)
-      setIsPlaying(true)
-    }
-  }, [currentIndex, playlist])
+    if (playlist.length === 0) return
+    setCurrentIndex(prev => (prev + 1 < playlist.length ? prev + 1 : 0))
+    setIsPlaying(true)
+  }, [playlist.length])
 
   const previous = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1)
-      setIsPlaying(true)
-    }
-  }, [currentIndex])
+    if (playlist.length === 0) return
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : playlist.length - 1))
+    setIsPlaying(true)
+  }, [playlist.length])
 
   const togglePlay = useCallback(() => {
     setIsPlaying(prev => !prev)
+  }, [])
+
+  const closePlayer = useCallback(() => {
+    setIsPlaying(false)
+    setCurrentIndex(-1)
   }, [])
 
   const setPlaylist = useCallback((themes: IThemeCache[]) => {
@@ -69,7 +78,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       previous, 
       togglePlay,
       setPlaylist,
-      setIsPlaying
+      setIsPlaying,
+      closePlayer
     }}>
       {children}
     </PlayerContext.Provider>

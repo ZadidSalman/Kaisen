@@ -115,7 +115,7 @@ export function FavoritesClient() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2, delay: i * 0.02 }}
               >
-                <ThemeListRow {...theme} />
+                <ThemeListRow {...theme} playlist={filteredFavorites} />
               </motion.div>
             ))}
           </AnimatePresence>

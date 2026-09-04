@@ -25,29 +25,30 @@ export function ThemePageClient({ initialData }: { initialData: IThemeCache }) {
   const initialMode = searchParams.get('mode') as 'watch' | 'listen' | null
 
   const [theme, setTheme] = useState(initialData)
-
-  useEffect(() => {
-    setTheme(initialData)
-    setSelectedEntry(initialData.entries.find(e => e.version === 'Standard') ?? initialData.entries[0])
-    setHasWatched(false)
-    setUserRating(0)
-    
-    const m = searchParams.get('mode') as 'watch' | 'listen' | null
-    if (m) setMode(m)
-  }, [initialData, searchParams])
-
-  const animeDisplayTitle = getAnimeTitle(theme)
-  const songDisplayTitle = getSongTitle(theme)
   const [mode, setMode] = useState<'watch' | 'listen'>(initialMode || 'watch')
   const [selectedEntry, setSelectedEntry] = useState<IThemeEntry>(
     theme.entries.find(e => e.version === 'Standard') ?? theme.entries[0]
   )
-  const [downloading, setDownloading] = useState(false)
-
-  const fallback = getFallbackImage(theme.slug)
-
   const [userRating, setUserRating] = useState(0)
   const [hasWatched, setHasWatched] = useState(false)
+
+  useEffect(() => {
+    if (theme._id !== initialData._id) {
+      setTimeout(() => {
+        setTheme(initialData)
+        setSelectedEntry(initialData.entries.find(e => e.version === 'Standard') ?? initialData.entries[0])
+        setHasWatched(false)
+        setUserRating(0)
+      }, 0)
+    }
+    
+    const m = searchParams.get('mode') as 'watch' | 'listen' | null
+    if (m && m !== mode) setTimeout(() => setMode(m), 0)
+  }, [initialData, searchParams, theme._id, mode])
+  const animeDisplayTitle = getAnimeTitle(theme)
+  const songDisplayTitle = getSongTitle(theme)
+  const [downloading, setDownloading] = useState(false)
+  const fallback = getFallbackImage(theme.slug)
   const [similarThemes, setSimilarThemes] = useState<IThemeCache[]>([])
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false)
 

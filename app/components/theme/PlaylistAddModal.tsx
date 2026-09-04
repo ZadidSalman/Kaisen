@@ -39,7 +39,7 @@ export function PlaylistAddModal({ themeId, isOpen, onClose }: PlaylistAddModalP
 
   useEffect(() => {
     if (isOpen) {
-      fetchPlaylists()
+      setTimeout(() => fetchPlaylists(), 0)
     }
   }, [isOpen, fetchPlaylists])
 

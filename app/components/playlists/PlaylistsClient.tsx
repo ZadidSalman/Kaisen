@@ -32,9 +32,9 @@ export function PlaylistsClient() {
 
   useEffect(() => {
     if (user) {
-      fetchPlaylists()
+      setTimeout(() => fetchPlaylists(), 0)
     } else {
-      setLoading(false)
+      setTimeout(() => setLoading(false), 0)
     }
   }, [user, fetchPlaylists])
 

@@ -33,7 +33,7 @@ export function PlaylistDetailClient({ id }: { id: string }) {
   }, [id, router])
 
   useEffect(() => {
-    fetchPlaylist()
+    setTimeout(() => fetchPlaylist(), 0)
   }, [fetchPlaylist])
 
   const handleRemoveTheme = async (themeId: string) => {

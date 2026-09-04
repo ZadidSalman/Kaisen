@@ -5,7 +5,10 @@ import { comparePassword, signAccessToken, signRefreshToken, setTokenCookie } fr
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB()
+    const db = await connectDB()
+    if (!db) {
+      return NextResponse.json({ success: false, error: 'Database unavailable' }, { status: 503 })
+    }
     const { email, password } = await req.json()
 
     if (!email || !password) {

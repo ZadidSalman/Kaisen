@@ -2,10 +2,11 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Star, Heart, MoreVertical } from 'lucide-react'
+import { Star, Heart, MoreVertical, Play, Pause } from 'lucide-react'
 import { IThemeCache } from '@/types/app.types'
 import { getScoreColor, getFallbackImage, getAnimeTitle, getSongTitle } from '@/lib/utils'
 import { usePlayer } from '@/app/context/PlayerContext'
+import { motion } from 'motion/react'
 
 import { useFavorites } from '@/hooks/useFavorites'
 
@@ -13,6 +14,7 @@ interface ThemeListRowProps extends Partial<IThemeCache> {
   friendUsername?: string
   friendScore?: number
   isWatched?: boolean
+  playlist?: any[]
 }
 
 export const ThemeListRow = React.memo(function ThemeListRow(props: ThemeListRowProps) {
@@ -23,6 +25,7 @@ export const ThemeListRow = React.memo(function ThemeListRow(props: ThemeListRow
     slug,
     artistName,
     animeCoverImage,
+    playlist,
   } = props
   const animeDisplayTitle = getAnimeTitle(props)
   const songDisplayTitle = getSongTitle(props)
@@ -30,29 +33,78 @@ export const ThemeListRow = React.memo(function ThemeListRow(props: ThemeListRow
 
   const isLiked = _id ? isFavorited(_id) : false
 
+  const isCurrent = Boolean(
+    (currentTheme?.slug && slug && currentTheme.slug === slug) ||
+    (currentTheme?._id && _id && String(currentTheme._id) === String(_id))
+  )
+  const isRowPlaying = isCurrent && isPlaying
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isCurrent) {
+      togglePlay()
+    } else {
+      playTheme(props, playlist)
+    }
+  }
+
   return (
-    <Link href={`/theme/${slug}`} className="
+    <Link href={`/theme/${slug}`} className={`
       flex items-center gap-3 p-2 sm:p-3
-      bg-accent-container rounded-3xl
-      shadow-sm interactive cursor-pointer
+      rounded-3xl shadow-sm interactive cursor-pointer
       transition-all duration-200 hover:shadow-md
-    ">
+      ${isCurrent 
+        ? 'bg-accent/15 ring-1 ring-accent/30' 
+        : 'bg-accent-container'
+      }
+    `}>
       <div className="w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 rounded-[18px] overflow-hidden bg-bg-elevated relative">
         <Image 
           src={animeCoverImage || fallback} 
           fill
+          unoptimized
           className="object-cover" 
           alt={animeDisplayTitle ?? 'Anime cover'} 
           referrerPolicy="no-referrer"
         />
+
+        {isRowPlaying && (
+          <div className="absolute inset-0 bg-black/45 flex items-center justify-center gap-0.5">
+            <motion.div animate={{ height: [3, 12, 5, 14] }} transition={{ repeat: Infinity, duration: 0.5 }} className="w-0.5 bg-white rounded-full" />
+            <motion.div animate={{ height: [10, 4, 13, 6] }} transition={{ repeat: Infinity, duration: 0.6 }} className="w-0.5 bg-white rounded-full" />
+            <motion.div animate={{ height: [5, 13, 4, 11] }} transition={{ repeat: Infinity, duration: 0.7 }} className="w-0.5 bg-white rounded-full" />
+          </div>
+        )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-base font-display font-bold text-ktext-primary truncate">{songDisplayTitle}</p>
+        <p className={`text-base font-display font-bold truncate transition-colors ${
+          isCurrent ? 'text-accent' : 'text-ktext-primary'
+        }`}>
+          {songDisplayTitle}
+        </p>
         <p className="text-xs sm:text-sm font-body text-ktext-secondary truncate">
           {artistName || animeDisplayTitle}
         </p>
       </div>
-      <div className="flex items-center gap-2 pr-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 pr-2">
+        <button
+          type="button"
+          onClick={handlePlayClick}
+          aria-label={isRowPlaying ? `Pause ${songDisplayTitle}` : `Play ${songDisplayTitle}`}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-xs ${
+            isRowPlaying
+              ? 'bg-accent text-white scale-105 shadow-accent/30'
+              : 'bg-accent/15 text-accent hover:bg-accent hover:text-white hover:scale-105 active:scale-95'
+          }`}
+        >
+          {isRowPlaying ? (
+            <Pause className="w-4 h-4 fill-current text-white" />
+          ) : (
+            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+          )}
+        </button>
+
         <button 
           onClick={(e) => {
             e.preventDefault()
